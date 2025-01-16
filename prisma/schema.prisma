@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdQuizzes Quiz[] 
+}
+
+model Quiz {
+  id        String   @id @default(cuid())
+  title     String
+  description String
+  questions Question[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  createdBy User     @relation(fields: [createdById], references: [id])
+  createdById String
+  category String
+  difficulty Difficulty @default(EASY)
+  timeLimit Int?
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  question  String
+  type     QuestionType @default(SINGLE)
+  answers   String[] @default([])
+  correctAnswer String[]
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+  OPEN
+}
