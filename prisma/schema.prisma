@@ -61,3 +61,5 @@ enum QuestionType {
   MULTIPLE
   OPEN
 }
+
+// npx prisma db push dodanie do bazy danych

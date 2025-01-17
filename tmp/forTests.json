@@ -1,0 +1,21 @@
+{   "quiz":{
+        "title": "TEST",
+        "description": "TEST",
+        "category": "TEST",
+        "difficulty": "EASY",
+        "createdById": "cm60ifkcq0000wo103tnaa98f",
+        "questions": [
+            {
+                "question": "TEST",
+                "type": "SINGLE",
+                "answers": ["TEST1", "TEST2", "TEST3", "TEST4"],
+                "correctAnswer": ["TEST1"]
+            }
+        ]
+    },
+    "user": {
+        "name": "krzychu",
+        "email": "krzys@example.com",
+        "password": "TEST"
+    }
+}
