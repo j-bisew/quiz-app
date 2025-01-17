@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import prisma from '../db/prisma';
+import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -27,7 +28,13 @@ async function login(req: Request, res: Response) {
             if (!user) {
                 res.status(404).json({ error: 'User not found' });
             } else {
-                res.json(user);
+                const passwordMatch = await bcrypt.compare(password, user.password);
+                if (!passwordMatch) {
+                    res.status(401).json({ error: 'Invalid password' });
+                } else {
+                    const { password: _, ...userWithoutPassword } = user;
+                    res.json(userWithoutPassword);
+                }
             }
         }
 
@@ -47,17 +54,19 @@ async function register(req: Request, res: Response) {
             if (await prisma.user.findUnique({ where: { email } })) {
                 res.status(400).json({ error: 'Email already in use' });
             } else {
+                const hashedPassword = await bcrypt.hash(password, 10);
                 const user = await prisma.user.create({
                     data: {
                         name,
                         email,
-                        password,
+                        password: hashedPassword,
                     },
                     select: {
                         id: true,
                         name: true,
                         email: true,
                         role: true,
+                        createdAt: true,
                     },
                 });
             res.status(201).json({message: "Registration successful", user});
