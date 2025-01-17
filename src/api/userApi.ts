@@ -4,7 +4,6 @@ import prisma from "../db/prisma";
 const router = express.Router();
 
 router.get("/", getUsers);
-router.post("/", createUser);
 router.get("/:id", getUser);
 router.patch("/:id", updateUser);
 router.delete("/:id", deleteUser);
@@ -17,25 +16,6 @@ async function getUsers(_req: Request, res: Response) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'An error occurred while fetching users' });
   }
-}
-
-async function createUser(req: Request, res: Response) {
-    try {
-        const { name, email, password } = req.body;
-    
-        const user = await prisma.user.create({
-        data: {
-            name,
-            email,
-            password,
-        }
-        });
-    
-        res.status(201).json(user);
-    } catch (error) {
-        console.error('Error creating user:', error);
-        res.status(500).json({ error: 'An error occurred while creating a user' });
-    }
 }
 
 async function getUser(req: Request, res: Response) {

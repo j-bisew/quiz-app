@@ -1,11 +1,11 @@
-import express from "express";
-import { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import prisma from "../db/prisma";
 
 const router = express.Router();
 
 router.get("/", getQuizzes);
 router.post("/", createQuiz);
+router.get("/search", searchQuizzes);
 router.get("/:id", getQuiz);
 router.patch("/:id", updateQuiz);
 router.delete("/:id", deleteQuiz);
@@ -138,5 +138,39 @@ async function deleteQuiz(req: Request, res: Response) {
   }
 }
 
+async function searchQuizzes(req: Request, res: Response) {
+  try {
+    const { pattern } = req.query;
+
+    if (!pattern || typeof pattern !== 'string') {
+      res.status(400).json({ error: 'Invalid search pattern' });
+  } else {
+  
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        OR: [
+          { title: { contains: pattern, mode: 'insensitive' } },
+          { description: { contains: pattern, mode: 'insensitive' } },
+          { category: { contains: pattern, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        questions: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.json(quizzes);
+  }
+  } catch (error) {
+    console.error('Error searching quizzes:', error);
+    res.status(500).json({ error: 'An error occurred while searching quizzes' });
+  }
+}
 
 export default router;
