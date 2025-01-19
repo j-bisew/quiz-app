@@ -1,4 +1,5 @@
 import { PrismaClient, QuestionType, Difficulty, Role } from "@prisma/client";
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
@@ -7,11 +8,13 @@ async function main() {
     await prisma.quiz.deleteMany();
     await prisma.user.deleteMany();
 
+    const hashedPassword = await bcrypt.hash("password", 10);
+
     const user1 = await prisma.user.create({
         data: {
             name: "michal",
             email: "michal@example.com",
-            password: "password",
+            password: hashedPassword,
             role: Role.MODERATOR,
         },
     });
@@ -20,7 +23,7 @@ async function main() {
         data: {
             name: "zosia",
             email: "zosia@example.com",
-            password: "password",
+            password: hashedPassword,
             role: Role.ADMIN,
         },
     });
@@ -29,7 +32,7 @@ async function main() {
         data: {
             name: "Pioter",
             email: "pioter@example.com",
-            password: "password",
+            password: hashedPassword,
             role: Role.USER,
         },
     });
