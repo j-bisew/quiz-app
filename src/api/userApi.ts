@@ -7,6 +7,9 @@ router.get("/", getUsers);
 router.get("/:id", getUser);
 router.patch("/:id", updateUser);
 router.delete("/:id", deleteUser);
+router.get("/email/:email", searchByEmail);
+router.delete("/email/:email", deleteUserByEmail);
+router.patch("/email/:email/role", updateRoleByEmail);
 
 async function getUsers(_req: Request, res: Response) {
   try {
@@ -74,6 +77,64 @@ async function deleteUser(req: Request, res: Response) {
             res.status(404).json({ error: 'User not found' });
         } else {
             await prisma.user.delete({ where: { id: userId } });
+            res.json({ message: 'User deleted successfully' });
+        }
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ error: 'An error occurred while deleting user' });
+    }
+}
+
+async function updateRoleByEmail(req: Request, res: Response) {
+    try {
+        const email = req.params.email as string;
+        const role = req.body.role;
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            res.status(404).json({ error: 'User not found' });
+        } else {
+            await prisma.user.update({
+                where: { email },
+                data: { role }
+            });
+    
+            res.json({ message: 'Role updated successfully' });
+        }
+    } catch (error) {
+        console.error('Error updating role:', error);
+        res.status(500).json({ error: 'An error occurred while updating role' });
+    }
+}
+
+async function searchByEmail(req: Request, res: Response) {
+    try {
+        const email = req.params.email as string;
+        const user = await prisma.user.findUnique({ where: { email } });
+        if (!user) {
+            res.status(404).json({ error: 'User not found' });
+        } else {
+            res.json(user.id);
+        }
+    } catch (error) {
+        console.error('Error fetching user:', error);
+        res.status(500).json({ error: 'An error occurred while fetching user' });
+    }
+}
+
+async function deleteUserByEmail(req: Request, res: Response) {
+    try {
+        const email = req.params.email as string;
+        const user = await prisma.user.findUnique({ 
+            where: { email }
+        });
+
+        if (!user) {
+            res.status(404).json({ error: 'User not found' });
+        } else {
+            await prisma.user.delete({
+                where: { email }
+            });
+    
             res.json({ message: 'User deleted successfully' });
         }
     } catch (error) {
