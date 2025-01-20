@@ -15,7 +15,7 @@ model User {
   role      Role     @default(USER)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  createdQuizzes Quiz[] 
+  createdQuizzes Quiz[]
 }
 
 model Quiz {
@@ -25,16 +25,16 @@ model Quiz {
   questions Question[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  createdBy User     @relation(fields: [createdById], references: [id])
+  createdBy User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
   createdById String
   category String
-  difficulty Difficulty @default(EASY)
+  difficulty Difficulty @default(MEDIUM)
   timeLimit Int?
 }
 
 model Question {
   id        String   @id @default(cuid())
-  question  String
+  title     String
   type     QuestionType @default(SINGLE)
   answers   String[] @default([])
   correctAnswer String[]

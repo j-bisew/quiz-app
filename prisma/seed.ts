@@ -47,7 +47,7 @@ async function main() {
             questions: {
                 create: [
                     {
-                        question: "What is JavaScript?",
+                        title: "What is JavaScript?",
                         type: QuestionType.SINGLE,
                         answers: [
                             "A programming language",
@@ -57,7 +57,7 @@ async function main() {
                         correctAnswer: ["A programming language"],
                     },
                     {
-                        question: "What is result of '2' + 2?",
+                        title: "What is result of '2' + 2?",
                         type: QuestionType.SINGLE,
                         answers: ["'22'", "4", "2"],
                         correctAnswer: ["'22'"],
@@ -78,13 +78,13 @@ async function main() {
             questions: {
                 create: [
                     {
-                        question: "What is root of 16?",
+                        title: "What is root of 16?",
                         type: QuestionType.MULTIPLE,
                         answers: ["2", "4", "-4", "-2"],
                         correctAnswer: ["4", "-4"],
                     },
                     {
-                        question: "What is 2 + 2 * 3?",
+                        title: "What is 2 + 2 * 3?",
                         type: QuestionType.OPEN,
                         answers: [],
                         correctAnswer: ["8"],
@@ -105,13 +105,13 @@ async function main() {
             questions: {
                 create: [
                     {
-                        question: "What is capital of France?",
+                        title: "What is capital of France?",
                         type: QuestionType.SINGLE,
                         answers: ["Paris", "Berlin", "Madrid"],
                         correctAnswer: ["Paris"],
                     },
                     {
-                        question: "What is capital of Germany?",
+                        title: "What is capital of Germany?",
                         type: QuestionType.SINGLE,
                         answers: ["Paris", "Berlin", "Madrid"],
                         correctAnswer: ["Berlin"],
