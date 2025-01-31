@@ -16,6 +16,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdQuizzes Quiz[]
+  comments Comment[]
+  leaderboardEntries LeaderboardEntry[]
 }
 
 model Quiz {
@@ -30,6 +32,8 @@ model Quiz {
   category String
   difficulty Difficulty @default(MEDIUM)
   timeLimit Int?
+  comments Comment[]
+  leaderboardEntries LeaderboardEntry[]
 }
 
 model Question {
@@ -40,6 +44,29 @@ model Question {
   correctAnswer String[]
   quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  text      String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LeaderboardEntry {
+  id        String   @id @default(cuid())
+  score     Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  timeSpent Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -63,3 +90,4 @@ enum QuestionType {
 }
 
 // npx prisma db push dodanie do bazy danych
+// npx prisma generate generowanie nowego clienta
