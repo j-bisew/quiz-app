@@ -45,13 +45,11 @@ export default function QuizResultPage({ id, score }: QuizResultPageProps) {
 
   useEffect(() => {
     const topic = `quizzes/${id}/comments`;
-    console.log('Setting up real-time updates for quiz:', id);
+    const room = `quiz_${id}`;
 
-    // Connect to Socket.IO
     socket.connect();
     socket.emit('joinQuiz', { quizId: id });
 
-    // Subscribe to MQTT topic
     mqttClient.subscribe(topic, { qos: 1 }, (err) => {
       if (err) {
         console.error('Failed to subscribe to MQTT topic:', err);
@@ -60,7 +58,6 @@ export default function QuizResultPage({ id, score }: QuizResultPageProps) {
       }
     });
 
-    // MQTT message handler
     const handleMqttMessage = (receivedTopic: string, message: Buffer) => {
       if (receivedTopic === topic) {
         try {
@@ -81,7 +78,6 @@ export default function QuizResultPage({ id, score }: QuizResultPageProps) {
       }
     };
 
-    // Socket.IO message handler
     const handleSocketMessage = (update: any) => {
       const messageId = update.type + '_' + (update.comment?.id || update.commentId);
       
@@ -95,13 +91,12 @@ export default function QuizResultPage({ id, score }: QuizResultPageProps) {
       handleCommentUpdate(update);
     };
 
-    // Add event listeners
     mqttClient.on('message', handleMqttMessage);
     socket.on('commentUpdate', handleSocketMessage);
 
-    // Cleanup
     return () => {
-      console.log('Cleaning up connections');
+      console.log('Leaving quiz room:', room);
+      socket.emit('leaveQuiz', { quizId: id }); 
       mqttClient.unsubscribe(topic);
       mqttClient.off('message', handleMqttMessage);
       socket.off('commentUpdate', handleSocketMessage);
