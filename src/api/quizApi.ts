@@ -1,6 +1,5 @@
 import express, { Request, Response } from "express";
 import prisma from "../db/prisma";
-import {mqttClient} from "../liveQuizServer";
 // import { randomUUID } from "crypto";
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
 
@@ -54,10 +53,6 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
       }
     });
 
-    mqttClient.publish('quizzes/updates', JSON.stringify({ 
-      type: 'created',
-      quiz: quiz,
-    }));
 
     res.status(201).json(quiz);
   } catch (error) {
@@ -122,11 +117,6 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
       }
     });
 
-    mqttClient.publish('quizzes/updates', JSON.stringify({
-      type: 'updated',
-      quiz: updatedQuiz,
-    }));
-
     res.json(updatedQuiz);
   } catch (error) {
     console.error('Error updating quiz:', error);
@@ -143,11 +133,6 @@ async function deleteQuiz(req: AuthenticatedRequest, res: Response) {
       res.status(404).json({ error: 'Quiz not found' });
     } else {
       await prisma.quiz.delete({ where: { id: quizId } });
-
-      mqttClient.publish('quizzes/updates', JSON.stringify({
-        type: 'deleted',
-        quizId: quizId,
-      }));
 
       res.status(204).json("Quiz deleted successfully");
     }
@@ -236,86 +221,6 @@ function arraysEqual(a: string[], b: string[]) {
 }
 router.post("/:id/check-answers", checkAnswers);
 
-// function generateSessionId() {
-//   return randomUUID();
-// }
-
-// async function startLiveQuizSession(req: Request, res: Response) {
-//   try {
-//     const quizId = req.params.id;
-//     const quiz = await prisma.quiz.findUnique({
-//       where: { id: quizId },
-//       include: { questions: true },
-//     });
-
-//     if (!quiz) {
-//       res.status(404).json({ error: 'Quiz not found' });
-//     } else {
-//       const sessionId = generateSessionId();
-
-//       mqttClient.publish(`quizzes/${quizId}/sessions/${sessionId}`, JSON.stringify({
-//         type: 'session_start',
-//         quizId,
-//         sessionId,
-//         quiz,
-//       }));
-
-//       res.json({ sessionId });
-//     }
-//   } catch (error) {
-//     console.error('Error starting live quiz session:', error);
-//     res.status(500).json({ error: 'An error occurred while starting the live quiz session' });
-//   }
-// }
-
-// async function joinLiveQuizSession(req: Request, res: Response) {
-//   try {
-//     const quizId = req.params.id;
-//     const sessionId = req.params.sessionId;
-//     const userId = req.body.userId;
-
-//     mqttClient.publish(`quizzes/${quizId}/sessions/${sessionId}`, JSON.stringify({
-//       type: 'user_join',
-//       quizId,
-//       sessionId,
-//       userId,
-//     }));
-
-//     res.json({ message: 'Joined live quiz session successfully' });
-//   } catch (error) {
-//     console.error('Error joining live quiz session:', error);
-//     res.status(500).json({ error: 'An error occurred while joining the live quiz session' });
-//   }
-// }
-
-// async function submitLiveQuizAnswer(req: Request, res: Response) {
-//   try {
-//     const quizId = req.params.id;
-//     const sessionId = req.params.sessionId;
-//     const questionId = req.params.questionId;
-//     const userId = req.body.userId;
-//     const answer = req.body.answer;
-
-//     mqttClient.publish(`quizzes/${quizId}/sessions/${sessionId}`, JSON.stringify({
-//       type: 'user_answer',
-//       quizId,
-//       sessionId,
-//       questionId,
-//       userId,
-//       answer,
-//     }));
-
-//     res.json({ message: 'Answer submitted successfully' });
-//   } catch (error) {
-//     console.error('Error submitting live quiz answer:', error);
-//     res.status(500).json({ error: 'An error occurred while submitting the answer' });
-//   }
-// }
-
-// router.post('/:id/live-sessions/start', startLiveQuizSession);
-// router.post('/:id/live-sessions/:sessionId/join', joinLiveQuizSession);
-// router.post('/:id/live-sessions/:sessionId/questions/:questionId/submit', submitLiveQuizAnswer);
-
 async function getQuizLeaderboard(req: Request, res: Response) {
   try {
     const quizId = req.params.id;
@@ -393,18 +298,6 @@ async function addQuizComment(req: AuthenticatedRequest, res: Response) {
       },
     });
 
-    mqttClient.publish(`quizzes/${quizId}/comments`, JSON.stringify({
-      type: 'comment_added',
-      comment: {
-        id: comment.id,
-        quizId: comment.quizId,
-        userId: comment.userId,
-        userName: comment.user.name,
-        text: comment.text,
-        createdAt: comment.createdAt,
-      },
-    }));
-
     res.status(201).json({
       id: comment.id,
       quizId: comment.quizId,
@@ -439,11 +332,6 @@ async function deleteQuizComment(req: AuthenticatedRequest, res: Response) {
       res.status(404).json({ error: 'Comment not found' });
     } else {
       await prisma.comment.delete({ where: { id: commentId } });
-
-      mqttClient.publish(`quizzes/${comment.quizId}/comments`, JSON.stringify({
-        type: 'comment_deleted',
-        commentId: commentId,
-      }));
 
       console.log('Published MQTT message for comment deletion:', {
         topic: `quizzes/${comment.quizId}/comments`,
