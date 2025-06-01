@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: quiz_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quiz_db
+      POSTGRES_USER: quiz_user
+      POSTGRES_PASSWORD: quiz_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - quiz_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U quiz_user -d quiz_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: quiz_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@quiz.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: 'False'
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - quiz_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  quiz_app:
+    build: .
+    container_name: quiz_app
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://quiz_user:quiz_password@postgres:5432/quiz_db
+      JWT_SECRET: your-super-secret-jwt-key-here
+      FRONTEND_URL: http://localhost:3000
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - quiz_network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+networks:
+  quiz_network:
+    driver: bridge
