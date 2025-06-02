@@ -1,69 +1,90 @@
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     container_name: quiz_postgres
-    restart: unless-stopped
     environment:
       POSTGRES_DB: quiz_db
       POSTGRES_USER: quiz_user
       POSTGRES_PASSWORD: quiz_password
-      PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d
-    networks:
-      - quiz_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U quiz_user -d quiz_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: quiz_pgadmin
-    restart: unless-stopped
+  mongodb:
+    image: mongo:8.0
+    container_name: quiz_mongodb
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@quiz.com
-      PGADMIN_DEFAULT_PASSWORD: admin123
-      PGADMIN_CONFIG_SERVER_MODE: 'False'
+      MONGO_INITDB_ROOT_USERNAME: mongo_user
+      MONGO_INITDB_ROOT_PASSWORD: mongo_password
     ports:
-      - "8080:80"
+      - "27017:27017"
     volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    networks:
-      - quiz_network
-    depends_on:
-      postgres:
-        condition: service_healthy
+      - mongodb_data:/data/db
 
-  quiz_app:
-    build: .
-    container_name: quiz_app
-    restart: unless-stopped
+  # Serwis tylko do seed'owania bazy
+  db-seeder:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
     environment:
-      NODE_ENV: development
       DATABASE_URL: postgresql://quiz_user:quiz_password@postgres:5432/quiz_db
-      JWT_SECRET: your-super-secret-jwt-key-here
-      FRONTEND_URL: http://localhost:3000
-    ports:
-      - "5000:5000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    networks:
-      - quiz_network
     depends_on:
-      postgres:
-        condition: service_healthy
-    command: npm run dev
+      - postgres
+    command: >
+      sh -c "
+        npx prisma db push &&
+        npx prisma db seed
+      "
+    profiles:
+      - seed
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: quiz_user_service
+    environment:
+      DATABASE_URL: postgresql://quiz_user:quiz_password@postgres:5432/quiz_db
+      JWT_SECRET: super-secret-jwt-token
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+
+  quiz-service:
+    build:
+      context: .
+      dockerfile: quiz-service/Dockerfile
+    container_name: quiz_quiz_service
+    environment:
+      DATABASE_URL: postgresql://quiz_user:quiz_password@postgres:5432/quiz_db
+      PORT: 3002
+      USER_SERVICE_URL: http://user-service:3001
+    ports:
+      - "3002:3002"
+    depends_on:
+      - postgres
+      - user-service
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: analytics-service/Dockerfile
+    container_name: quiz_analytics_service
+    environment:
+      DATABASE_URL: postgresql://quiz_user:quiz_password@postgres:5432/quiz_db
+      MONGODB_URL: mongodb://mongo_user:mongo_password@mongodb:27017/quiz_analytics?authSource=admin
+      PORT: 3003
+      USER_SERVICE_URL: http://user-service:3001
+    ports:
+      - "3003:3003"
+    depends_on:
+      - postgres
+      - mongodb
+      - user-service
 
 volumes:
   postgres_data:
-  pgadmin_data:
-
-networks:
-  quiz_network:
-    driver: bridge
+  mongodb_data:

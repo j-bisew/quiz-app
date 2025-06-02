@@ -1,6 +1,5 @@
 import express, { Request, Response } from "express";
 import prisma from "../db/prisma";
-// import { randomUUID } from "crypto";
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
 
 const router = express.Router();
@@ -11,6 +10,7 @@ router.get("/search", searchQuizzes);
 router.get("/:id", getQuiz);
 router.patch("/:id", authMiddleware, updateQuiz);
 router.delete("/:id", authMiddleware, deleteQuiz);
+router.post("/:id/check-answers", checkAnswers);
 
 async function getQuizzes(_req: Request, res: Response) {
   try {
@@ -34,8 +34,11 @@ async function getQuizzes(_req: Request, res: Response) {
 
 async function createQuiz(req: AuthenticatedRequest, res: Response) {
   try {
-    const { title, description, category, difficulty, timeLimit, createdById, questions } = req.body;
+    const { title, description, category, difficulty, timeLimit, questions } = req.body;
     const newTimeLimit = timeLimit === '' ? null : Number(timeLimit);
+
+    const createdById = req.user!.id;
+
     const quiz = await prisma.quiz.create({
       data: {
         title,
@@ -92,6 +95,19 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
   try {
     const quizId = req.params.id;
     const { title, description, category, difficulty, timeLimit, questions } = req.body;
+    
+    const existingQuiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { createdById: true } });
+    
+    if (!existingQuiz) {
+      res.status(404).json({ error: 'Quiz not found' });
+      return;
+    }
+
+    if (existingQuiz.createdById !== req.user!.id) {
+      res.status(403).json({ error: 'You do not have permission to update this quiz' });
+      return;
+    }
+    
     await prisma.question.deleteMany({ where: { quizId } });
 
     const updatedQuiz = await prisma.quiz.update({
@@ -127,15 +143,19 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
 async function deleteQuiz(req: AuthenticatedRequest, res: Response) {
   try {
     const quizId = req.params.id;
-    const quiz = await prisma.quiz.findUnique({ where: { id: quizId } });
+    const quiz = await prisma.quiz.findUnique({ where: { id: quizId }, select: { createdById: true } });
 
     if (!quiz) {
       res.status(404).json({ error: 'Quiz not found' });
-    } else {
-      await prisma.quiz.delete({ where: { id: quizId } });
-
-      res.status(204).json("Quiz deleted successfully");
+      return;
     }
+    if (quiz.createdById !== req.user!.id) {
+      res.status(403).json({ error: 'You do not have permission to delete this quiz' });
+      return;
+    }
+    await prisma.quiz.delete({ where: { id: quizId } });
+    res.status(204).json("Quiz deleted successfully");
+    
   } catch (error) {
     console.error('Error deleting quiz:', error);
     res.status(500).json({ error: 'An error occurred while deleting a quiz' });
@@ -176,6 +196,7 @@ async function searchQuizzes(req: Request, res: Response) {
     res.status(500).json({ error: 'An error occurred while searching quizzes' });
   }
 }
+
 async function checkAnswers(req: Request, res: Response) {
   try {
     const { answers, timeSpent } = req.body;
@@ -190,16 +211,17 @@ async function checkAnswers(req: Request, res: Response) {
 
     if (!quiz) {
       res.status(404).json({ error: 'Quiz not found' });
-    } else {
-      const correctAnswers = quiz.questions.map((question) => question.correctAnswer);
-      const totalQuestions = correctAnswers.length;
-      const correctCount = answers.reduce((count: number, answer: string[], index: number) => {
-        return count + (arraysEqual(answer, correctAnswers[index]) ? 1 : 0);
-      }, 0);
-      const scorePercent = (correctCount / totalQuestions) * 100;
-
-      res.json({ scorePercent, timeSpent });
+      return;
     }
+    const correctAnswers = quiz.questions.map((question: any) => question.correctAnswer);
+    const totalQuestions = correctAnswers.length;
+    const correctCount = answers.reduce((count: number, answer: string[], index: number) => {
+      return count + (arraysEqual(answer, correctAnswers[index]) ? 1 : 0);
+    }, 0);
+    const scorePercent = (correctCount / totalQuestions) * 100;
+
+    res.json({ scorePercent, timeSpent });
+  
   } catch (error) {
     console.error('Error checking answers:', error);
     res.status(500).json({ error: 'An error occurred while checking answers' });
@@ -219,160 +241,5 @@ function arraysEqual(a: string[], b: string[]) {
   }
   return true;
 }
-router.post("/:id/check-answers", checkAnswers);
-
-async function getQuizLeaderboard(req: Request, res: Response) {
-  try {
-    const quizId = req.params.id;
-    const leaderboard = await prisma.leaderboardEntry.findMany({
-      where: { quizId },
-      orderBy: [
-        { score: 'desc' },
-        { timeSpent: 'asc' },
-      ],
-      take: 10,
-      include: {
-        user: {
-          select: { name: true },
-        },
-      },
-    });
-
-    res.json(leaderboard.map((entry) => ({
-      id: entry.id,
-      quizId: entry.quizId,
-      userId: entry.userId,
-      userName: entry.user.name,
-      score: entry.score,
-      timeSpent: entry.timeSpent,
-    })));
-  } catch (error) {
-    console.error('Error fetching quiz leaderboard:', error);
-    res.status(500).json({ error: 'An error occurred while fetching quiz leaderboard' });
-  }
-}
-
-async function getQuizComments(req: Request, res: Response) {
-  try {
-    const quizId = req.params.id;
-    const comments = await prisma.comment.findMany({
-      where: { quizId },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        user: {
-          select: { name: true },
-        },
-      },
-    });
-
-    res.json(comments.map((comment) => ({
-      id: comment.id,
-      quizId: comment.quizId,
-      userId: comment.userId,
-      userName: comment.user.name,
-      text: comment.text,
-      createdAt: comment.createdAt,
-    })));
-  } catch (error) {
-    console.error('Error fetching quiz comments:', error);
-    res.status(500).json({ error: 'An error occurred while fetching quiz comments' });
-  }
-}
-
-async function addQuizComment(req: AuthenticatedRequest, res: Response) {
-  try {
-    const quizId = req.params.id;
-    const userId = req.user!.id;
-    const { text } = req.body;
-
-    const comment = await prisma.comment.create({
-      data: {
-        text,
-        user: { connect: { id: userId } },
-        quiz: { connect: { id: quizId } },
-      },
-      include: {
-        user: {
-          select: { name: true },
-        },
-      },
-    });
-
-    res.status(201).json({
-      id: comment.id,
-      quizId: comment.quizId,
-      userId: comment.userId,
-      userName: comment.user.name,
-      text: comment.text,
-      createdAt: comment.createdAt,
-    });
-  } catch (error) {
-    console.error('Error adding quiz comment:', error);
-    res.status(500).json({ error: 'An error occurred while adding quiz comment' });
-  }
-}
-
-router.get('/:id/leaderboard', getQuizLeaderboard);
-router.get('/:id/comments', getQuizComments);
-router.post('/:id/comments', authMiddleware, addQuizComment);
-
-async function deleteQuizComment(req: AuthenticatedRequest, res: Response) {
-  try {
-    const commentId = req.params.commentId;
-
-    const comment = await prisma.comment.findUnique({
-      where: { id: commentId },
-      include: {
-        user: true,
-        quiz: true,
-      },
-    });
-
-    if (!comment) {
-      res.status(404).json({ error: 'Comment not found' });
-    } else {
-      await prisma.comment.delete({ where: { id: commentId } });
-
-      console.log('Published MQTT message for comment deletion:', {
-        topic: `quizzes/${comment.quizId}/comments`,
-        message: {
-          type: 'comment_deleted',
-          commentId: commentId,
-        },
-      });
-
-      res.status(204).end();
-    }
-  } catch (error) {
-    console.error('Error deleting quiz comment:', error);
-    res.status(500).json({ error: 'An error occurred while deleting quiz comment' });
-  }
-}
-
-router.delete('/:id/comments/:commentId', authMiddleware, deleteQuizComment);
-
-async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
-  try {
-    const quizId = req.params.id;
-    const userId = req.user!.id;
-    const { score, timeSpent } = req.body;
-
-    const entry = await prisma.leaderboardEntry.create({
-      data: {
-        score,
-        timeSpent,
-        user: { connect: { id: userId } },
-        quiz: { connect: { id: quizId } },
-      },
-    });
-
-    res.status(201).json(entry);
-  } catch (error) {
-    console.error('Error adding leaderboard entry:', error);
-    res.status(500).json({ error: 'An error occurred while adding leaderboard entry' });
-  }
-}
-
-router.post('/:id/leaderboard', authMiddleware, addLeaderboardEntry);
 
 export default router;

@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.post('/login', login);
 router.post('/register', register);
+router.post('/verify-token', verifyToken);
 
 async function login(req: Request, res: Response) {
     try {
@@ -77,6 +78,43 @@ async function register(req: Request, res: Response) {
     } catch (error) {
         console.error('Error registering user:', error);
         res.status(500).json({ error: 'An error occurred while registering user' });
+    }
+}
+
+async function verifyToken(req: Request, res: Response): Promise<void> {
+    try {
+        const { token } = req.body;
+
+        if (!token) {
+            res.status(400).json({ error: 'Token is required' });
+            return;
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+
+        const user = await prisma.user.findUnique({
+            where: { id: decoded.userId },
+            select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+            },
+        });
+        if (!user) {
+            res.status(404).json({ error: 'User not found' });
+            return;
+        }
+
+        res.json({
+            valid: true,
+            user
+        });
+    } catch (error) {
+        res.status(401).json({
+            valid: false,
+            error: 'Invalid token'
+        });
     }
 }
 

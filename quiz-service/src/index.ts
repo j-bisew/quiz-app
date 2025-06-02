@@ -1,9 +1,9 @@
 import express from 'express';
 import cors from 'cors';
 import http from 'http';
+
 import quizRouter from './api/quizApi';
-import userRouter from './api/userApi';
-import authRouter from './api/authApi';
+
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { 
   basicRateLimit, 
@@ -12,7 +12,7 @@ import {
   validateContentType 
 } from './middleware/security';
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3002;
 const app = express();
 const server = http.createServer(app);
 
@@ -21,7 +21,11 @@ app.use(securityLogger);
 app.use(basicRateLimit);
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    process.env.USER_SERVICE_URL || 'http://localhost:3001',
+    process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3003'
+  ],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -29,12 +33,11 @@ app.use(cors({
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
 app.use(validateContentType);
 
-// Health check endpoint
 app.get('/health', (_req, res) => {
   res.status(200).json({
+    service: 'Quiz Service',
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -42,9 +45,7 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.use('/api/auth', authRouter);
 app.use('/api/quizzes', quizRouter);
-app.use('/api/users', userRouter);
 
 app.use(notFoundHandler);
 
@@ -85,3 +86,5 @@ server.listen(PORT, () => {
   console.log(`Health check available at http://localhost:${PORT}/health`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+
+export default app;

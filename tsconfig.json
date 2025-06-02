@@ -108,6 +108,6 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "quiz-service/src/api", "quiz-service/src/db", "quiz-service/src/middleware"],
   "exclude": ["node_modules"]
 }
