@@ -30,8 +30,8 @@ describe('Leaderboard API', () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'hashedpassword',
-        role: 'USER'
-      }
+        role: 'USER',
+      },
     });
 
     testQuiz = await prisma.quiz.create({
@@ -47,11 +47,11 @@ describe('Leaderboard API', () => {
               title: 'Test question?',
               type: 'SINGLE',
               answers: ['Yes', 'No'],
-              correctAnswer: ['Yes']
-            }
-          ]
-        }
-      }
+              correctAnswer: ['Yes'],
+            },
+          ],
+        },
+      },
     });
 
     mockUserService.verifyToken.mockResolvedValue({
@@ -60,8 +60,8 @@ describe('Leaderboard API', () => {
         id: testUser.id,
         name: testUser.name,
         email: testUser.email,
-        role: testUser.role
-      }
+        role: testUser.role,
+      },
     });
   });
 
@@ -76,8 +76,8 @@ describe('Leaderboard API', () => {
           name: 'User Two',
           email: 'user2@example.com',
           password: 'hashedpassword',
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
 
       await prisma.leaderboardEntry.createMany({
@@ -86,36 +86,34 @@ describe('Leaderboard API', () => {
             score: 90,
             timeSpent: 120,
             userId: testUser.id,
-            quizId: testQuiz.id
+            quizId: testQuiz.id,
           },
           {
             score: 95,
             timeSpent: 100,
             userId: user2.id,
-            quizId: testQuiz.id
+            quizId: testQuiz.id,
           },
           {
             score: 85,
             timeSpent: 150,
             userId: testUser.id,
-            quizId: testQuiz.id
-          }
-        ]
+            quizId: testQuiz.id,
+          },
+        ],
       });
     });
 
     it('should return leaderboard entries sorted by score and time', async () => {
-      const response = await request(app)
-        .get(`/api/leaderboard/${testQuiz.id}`)
-        .expect(200);
+      const response = await request(app).get(`/api/leaderboard/${testQuiz.id}`).expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(3);
-      
+
       expect(response.body[0].score).toBe(95);
       expect(response.body[1].score).toBe(90);
       expect(response.body[2].score).toBe(85);
-      
+
       expect(response.body[0]).toHaveProperty('id');
       expect(response.body[0]).toHaveProperty('score');
       expect(response.body[0]).toHaveProperty('timeSpent');
@@ -137,16 +135,14 @@ describe('Leaderboard API', () => {
                 title: 'Empty question?',
                 type: 'SINGLE',
                 answers: ['Yes'],
-                correctAnswer: ['Yes']
-              }
-            ]
-          }
-        }
+                correctAnswer: ['Yes'],
+              },
+            ],
+          },
+        },
       });
 
-      const response = await request(app)
-        .get(`/api/leaderboard/${emptyQuiz.id}`)
-        .expect(200);
+      const response = await request(app).get(`/api/leaderboard/${emptyQuiz.id}`).expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(0);
@@ -157,7 +153,7 @@ describe('Leaderboard API', () => {
     it('should add leaderboard entry successfully', async () => {
       const entryData = {
         score: 88,
-        timeSpent: 90
+        timeSpent: 90,
       };
 
       const response = await request(app)
@@ -172,11 +168,11 @@ describe('Leaderboard API', () => {
       expect(response.body.quizId).toBe(testQuiz.id);
 
       const savedEntry = await prisma.leaderboardEntry.findFirst({
-        where: { 
+        where: {
           score: entryData.score,
           userId: testUser.id,
-          quizId: testQuiz.id
-        }
+          quizId: testQuiz.id,
+        },
       });
       expect(savedEntry).toBeTruthy();
     });
@@ -193,7 +189,7 @@ describe('Leaderboard API', () => {
     it('should return 401 with invalid token', async () => {
       mockUserService.verifyToken.mockResolvedValueOnce({
         valid: false,
-        error: 'Invalid token'
+        error: 'Invalid token',
       });
 
       const response = await request(app)
@@ -214,15 +210,15 @@ describe('Leaderboard API', () => {
             score: 90,
             timeSpent: 120,
             userId: testUser.id,
-            quizId: testQuiz.id
+            quizId: testQuiz.id,
           },
           {
             score: 85,
             timeSpent: 100,
             userId: testUser.id,
-            quizId: testQuiz.id
-          }
-        ]
+            quizId: testQuiz.id,
+          },
+        ],
       });
     });
 
@@ -234,7 +230,7 @@ describe('Leaderboard API', () => {
       expect(response.body).toHaveProperty('postgresql');
       expect(response.body).toHaveProperty('mongodb');
       expect(response.body).toHaveProperty('summary');
-      
+
       expect(response.body.summary).toHaveProperty('totalQuizzes');
       expect(response.body.summary).toHaveProperty('averageScore');
       expect(response.body.summary).toHaveProperty('totalTimeSpent');
@@ -247,8 +243,8 @@ describe('Leaderboard API', () => {
           name: 'New User',
           email: 'new@example.com',
           password: 'hashedpassword',
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
 
       const response = await request(app)
@@ -276,27 +272,34 @@ describe('Leaderboard API', () => {
                 title: 'Popular question?',
                 type: 'SINGLE',
                 answers: ['Yes', 'No'],
-                correctAnswer: ['Yes']
-              }
-            ]
-          }
-        }
+                correctAnswer: ['Yes'],
+              },
+            ],
+          },
+        },
       });
 
-      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, { score: 90, timeSpent: 100 });
-      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', quiz2.id, { score: 95, timeSpent: 80 });
-      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', quiz2.id, { score: 88, timeSpent: 90 });
+      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
+        score: 90,
+        timeSpent: 100,
+      });
+      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', quiz2.id, {
+        score: 95,
+        timeSpent: 80,
+      });
+      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', quiz2.id, {
+        score: 88,
+        timeSpent: 90,
+      });
     });
 
     it('should return popular quizzes with analytics', async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const response = await request(app)
-        .get('/api/leaderboard/popular/quizzes')
-        .expect(200);
+      const response = await request(app).get('/api/leaderboard/popular/quizzes').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
-      
+
       if (response.body.length > 0) {
         expect(response.body[0]).toHaveProperty('id');
         expect(response.body[0]).toHaveProperty('title');
@@ -307,7 +310,7 @@ describe('Leaderboard API', () => {
     });
 
     it('should respect limit parameter', async () => {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const response = await request(app)
         .get('/api/leaderboard/popular/quizzes?limit=1')

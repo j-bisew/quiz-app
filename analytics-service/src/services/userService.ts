@@ -12,7 +12,8 @@ interface VerifyTokenResponse {
 }
 
 export class UserService {
-  private static readonly USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:3001';
+  private static readonly USER_SERVICE_URL =
+    process.env.USER_SERVICE_URL || 'http://localhost:3001';
 
   static async verifyToken(token: string): Promise<VerifyTokenResponse> {
     try {
@@ -25,7 +26,7 @@ export class UserService {
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         return { valid: false, error: (data as any)?.error || 'Token verification failed' };
       }
@@ -40,12 +41,12 @@ export class UserService {
   static async getUserById(userId: string): Promise<User | null> {
     try {
       const response = await fetch(`${this.USER_SERVICE_URL}/api/users/${userId}`);
-      
+
       if (!response.ok) {
         return null;
       }
 
-      return await response.json() as User;
+      return (await response.json()) as User;
     } catch (error) {
       console.error('Error fetching user from user-service:', error);
       return null;

@@ -9,16 +9,18 @@ beforeAll(async () => {
   try {
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
-    
+
     await mongoose.connect(mongoUri);
     console.log('Connected to MongoDB Memory Server');
-    
+
     prisma = new PrismaClient({
       datasources: {
         db: {
-          url: process.env.DATABASE_URL || 'postgresql://quiz_user:quiz_password@localhost:5432/quiz_test_db'
-        }
-      }
+          url:
+            process.env.DATABASE_URL ||
+            'postgresql://quiz_user:quiz_password@localhost:5432/quiz_test_db',
+        },
+      },
     });
 
     console.log('Initialized Prisma Client');
@@ -28,7 +30,7 @@ beforeAll(async () => {
     await prisma.question.deleteMany();
     await prisma.quiz.deleteMany();
     await prisma.user.deleteMany();
-    
+
     if (mongoose.connection.db) {
       const collections = await mongoose.connection.db.collections();
       for (const collection of collections) {
@@ -46,7 +48,7 @@ beforeEach(async () => {
     await prisma.question.deleteMany();
     await prisma.quiz.deleteMany();
     await prisma.user.deleteMany();
-    
+
     if (mongoose.connection.db) {
       const collections = await mongoose.connection.db.collections();
       for (const collection of collections) {

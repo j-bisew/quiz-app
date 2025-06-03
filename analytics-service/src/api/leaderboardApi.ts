@@ -15,10 +15,7 @@ async function getQuizLeaderboard(req: Request, res: Response) {
     const quizId = req.params.quizId;
     const leaderboard = await prisma.leaderboardEntry.findMany({
       where: { quizId },
-      orderBy: [
-        { score: 'desc' },
-        { timeSpent: 'asc' },
-      ],
+      orderBy: [{ score: 'desc' }, { timeSpent: 'asc' }],
       take: 10,
       include: {
         user: {
@@ -27,7 +24,8 @@ async function getQuizLeaderboard(req: Request, res: Response) {
       },
     });
 
-    res.json(leaderboard.map((entry) => ({
+    res.json(
+      leaderboard.map((entry) => ({
         id: entry.id,
         quizId: entry.quizId,
         userId: entry.userId,
@@ -35,7 +33,8 @@ async function getQuizLeaderboard(req: Request, res: Response) {
         score: entry.score,
         timeSpent: entry.timeSpent,
         createdAt: entry.createdAt,
-    })));
+      }))
+    );
   } catch (error) {
     console.error('Error fetching quiz leaderboard:', error);
     res.status(500).json({ error: 'An error occurred while fetching quiz leaderboard' });
@@ -56,13 +55,13 @@ async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
         quiz: { connect: { id: quizId } },
       },
     });
-      
+
     await AnalyticsService.logActivity(
-        userId,
-        'quiz_completed',
-        quizId,
-        { score, timeSpent },
-        req.ip
+      userId,
+      'quiz_completed',
+      quizId,
+      { score, timeSpent },
+      req.ip
     );
 
     res.status(201).json(entry);
@@ -75,27 +74,27 @@ async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
 async function getUserStats(req: Request, res: Response) {
   try {
     const userId = req.params.userId;
-      
-      const stats = await prisma.leaderboardEntry.groupBy({
-          by: ['userId', 'quizId'],
-          where: { userId },
-          _count: { id: true },
-          _avg: { score: true },
-          _sum: { timeSpent: true },
-      });
 
-      const mongoStats = await AnalyticsService.getUserStats(userId);
+    const stats = await prisma.leaderboardEntry.groupBy({
+      by: ['userId', 'quizId'],
+      where: { userId },
+      _count: { id: true },
+      _avg: { score: true },
+      _sum: { timeSpent: true },
+    });
 
-      res.json({
-          postgresql: stats[0] || { _count: { id: 0 }, _avg: { score: 0 }, _sum: { timeSpent: 0 } },
-          mongodb: mongoStats,
-          summary: {
-              totalQuizzes: stats[0]?._count.id || 0,
-              averageScore: stats[0]?._avg.score || 0,
-              totalTimeSpent: stats[0]?._sum.timeSpent || 0,
-              activities: mongoStats.length,
-          },
-      });
+    const mongoStats = await AnalyticsService.getUserStats(userId);
+
+    res.json({
+      postgresql: stats[0] || { _count: { id: 0 }, _avg: { score: 0 }, _sum: { timeSpent: 0 } },
+      mongodb: mongoStats,
+      summary: {
+        totalQuizzes: stats[0]?._count.id || 0,
+        averageScore: stats[0]?._avg.score || 0,
+        totalTimeSpent: stats[0]?._sum.timeSpent || 0,
+        activities: mongoStats.length,
+      },
+    });
   } catch (error) {
     console.error('Error fetching user stats:', error);
     res.status(500).json({ error: 'An error occurred while fetching user stats' });
@@ -103,9 +102,9 @@ async function getUserStats(req: Request, res: Response) {
 }
 
 async function getPopularQuizzes(req: Request, res: Response) {
-    try {
-        const limit = parseInt(req.query.limit as string) || 10;
-        const popularQuizzes = await AnalyticsService.getPopularQuizzes(limit);
+  try {
+    const limit = parseInt(req.query.limit as string) || 10;
+    const popularQuizzes = await AnalyticsService.getPopularQuizzes(limit);
     const enrichedQuizzes = await Promise.all(
       popularQuizzes.map(async (popularity) => {
         try {
@@ -118,9 +117,9 @@ async function getPopularQuizzes(req: Request, res: Response) {
               category: true,
               difficulty: true,
               createdBy: {
-                select: { name: true }
-              }
-            }
+                select: { name: true },
+              },
+            },
           });
 
           return {
@@ -129,8 +128,8 @@ async function getPopularQuizzes(req: Request, res: Response) {
               totalAttempts: popularity.totalAttempts,
               averageScore: popularity.averageScore,
               popularityScore: popularity.popularityScore,
-              lastActivity: popularity.lastActivity
-            }
+              lastActivity: popularity.lastActivity,
+            },
           };
         } catch (error) {
           console.error(`Error fetching quiz ${popularity.quizId}:`, error);
@@ -139,7 +138,7 @@ async function getPopularQuizzes(req: Request, res: Response) {
       })
     );
 
-    const validQuizzes = enrichedQuizzes.filter(quiz => quiz !== null);
+    const validQuizzes = enrichedQuizzes.filter((quiz) => quiz !== null);
 
     res.json(validQuizzes);
   } catch (error) {

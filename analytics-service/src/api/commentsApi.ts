@@ -22,14 +22,16 @@ async function getQuizComments(req: Request, res: Response) {
       },
     });
 
-    res.json(comments.map((comment: any) => ({
-      id: comment.id,
-      quizId: comment.quizId,
-      userId: comment.userId,
-      userName: comment.user.name,
-      text: comment.text,
-      createdAt: comment.createdAt,
-    })));
+    res.json(
+      comments.map((comment: any) => ({
+        id: comment.id,
+        quizId: comment.quizId,
+        userId: comment.userId,
+        userName: comment.user.name,
+        text: comment.text,
+        createdAt: comment.createdAt,
+      }))
+    );
   } catch (error) {
     console.error('Error fetching quiz comments:', error);
     res.status(500).json({ error: 'An error occurred while fetching quiz comments' });
@@ -54,15 +56,15 @@ async function addComment(req: AuthenticatedRequest, res: Response) {
         },
       },
     });
-      
+
     await AnalyticsService.logActivity(
-        userId,
-        'comment_added',
-        quizId,
-        { commentText: text },
-        req.ip
-    )
-      
+      userId,
+      'comment_added',
+      quizId,
+      { commentText: text },
+      req.ip
+    );
+
     res.status(201).json({
       id: comment.id,
       quizId: comment.quizId,
@@ -92,25 +94,25 @@ async function deleteComment(req: AuthenticatedRequest, res: Response) {
     if (!comment) {
       res.status(404).json({ error: 'Comment not found' });
     } else {
-        const user = await prisma.user.findUnique({
-          where: { id: req.user!.id },
-          select: { role: true }
-        });
+      const user = await prisma.user.findUnique({
+        where: { id: req.user!.id },
+        select: { role: true },
+      });
 
-        if (comment.userId !== req.user!.id && user?.role !== 'ADMIN') {
-            res.status(403).json({ error: 'You do not have permission to delete this comment' });
-            return;
-        }
-        
-        await prisma.comment.delete({ where: { id: commentId } });
+      if (comment.userId !== req.user!.id && user?.role !== 'ADMIN') {
+        res.status(403).json({ error: 'You do not have permission to delete this comment' });
+        return;
+      }
 
-        await AnalyticsService.logActivity(
-            req.user!.id,
-            'comment_deleted',
-            comment.quizId,
-            { deleteCommentId: commentId },
-            req.ip
-        );
+      await prisma.comment.delete({ where: { id: commentId } });
+
+      await AnalyticsService.logActivity(
+        req.user!.id,
+        'comment_deleted',
+        comment.quizId,
+        { deleteCommentId: commentId },
+        req.ip
+      );
 
       res.status(204).end();
     }

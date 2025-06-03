@@ -15,8 +15,8 @@ describe('Comments API', () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'hashedpassword',
-        role: 'USER'
-      }
+        role: 'USER',
+      },
     });
 
     testQuiz = await prisma.quiz.create({
@@ -32,11 +32,11 @@ describe('Comments API', () => {
               title: 'Test question?',
               type: 'SINGLE',
               answers: ['Yes', 'No'],
-              correctAnswer: ['Yes']
-            }
-          ]
-        }
-      }
+              correctAnswer: ['Yes'],
+            },
+          ],
+        },
+      },
     });
 
     mockUserService.verifyToken.mockResolvedValue({
@@ -45,15 +45,15 @@ describe('Comments API', () => {
         id: testUser.id,
         name: testUser.name,
         email: testUser.email,
-        role: testUser.role
-      }
+        role: testUser.role,
+      },
     });
 
     mockUserService.getUserById.mockResolvedValue({
       id: testUser.id,
       name: testUser.name,
       email: testUser.email,
-      role: testUser.role
+      role: testUser.role,
     });
   });
 
@@ -64,21 +64,19 @@ describe('Comments API', () => {
           {
             text: 'Great quiz!',
             userId: testUser.id,
-            quizId: testQuiz.id
+            quizId: testQuiz.id,
           },
           {
             text: 'Very challenging',
             userId: testUser.id,
-            quizId: testQuiz.id
-          }
-        ]
+            quizId: testQuiz.id,
+          },
+        ],
       });
     });
 
     it('should return comments for a quiz', async () => {
-      const response = await request(app)
-        .get(`/api/comments/${testQuiz.id}`)
-        .expect(200);
+      const response = await request(app).get(`/api/comments/${testQuiz.id}`).expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(2);
@@ -102,16 +100,14 @@ describe('Comments API', () => {
                 title: 'Empty question?',
                 type: 'SINGLE',
                 answers: ['Yes'],
-                correctAnswer: ['Yes']
-              }
-            ]
-          }
-        }
+                correctAnswer: ['Yes'],
+              },
+            ],
+          },
+        },
       });
 
-      const response = await request(app)
-        .get(`/api/comments/${emptyQuiz.id}`)
-        .expect(200);
+      const response = await request(app).get(`/api/comments/${emptyQuiz.id}`).expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(0);
@@ -134,7 +130,7 @@ describe('Comments API', () => {
       expect(response.body.quizId).toBe(testQuiz.id);
 
       const savedComment = await prisma.comment.findFirst({
-        where: { text: commentText }
+        where: { text: commentText },
       });
       expect(savedComment).toBeTruthy();
     });
@@ -151,7 +147,7 @@ describe('Comments API', () => {
     it('should return 401 with invalid token', async () => {
       mockUserService.verifyToken.mockResolvedValueOnce({
         valid: false,
-        error: 'Invalid token'
+        error: 'Invalid token',
       });
 
       const response = await request(app)
@@ -172,8 +168,8 @@ describe('Comments API', () => {
         data: {
           text: 'Comment to delete',
           userId: testUser.id,
-          quizId: testQuiz.id
-        }
+          quizId: testQuiz.id,
+        },
       });
     });
 
@@ -184,7 +180,7 @@ describe('Comments API', () => {
         .expect(204);
 
       const deletedComment = await prisma.comment.findUnique({
-        where: { id: testComment.id }
+        where: { id: testComment.id },
       });
       expect(deletedComment).toBeNull();
     });
@@ -212,8 +208,8 @@ describe('Comments API', () => {
           name: 'Other User',
           email: 'other@example.com',
           password: 'hashedpassword',
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
 
       mockUserService.verifyToken.mockResolvedValueOnce({
@@ -222,8 +218,8 @@ describe('Comments API', () => {
           id: otherUser.id,
           name: otherUser.name,
           email: otherUser.email,
-          role: otherUser.role
-        }
+          role: otherUser.role,
+        },
       });
 
       const response = await request(app)
@@ -240,8 +236,8 @@ describe('Comments API', () => {
           name: 'Admin User',
           email: 'admin@example.com',
           password: 'hashedpassword',
-          role: 'ADMIN'
-        }
+          role: 'ADMIN',
+        },
       });
 
       mockUserService.verifyToken.mockResolvedValueOnce({
@@ -250,8 +246,8 @@ describe('Comments API', () => {
           id: adminUser.id,
           name: adminUser.name,
           email: adminUser.email,
-          role: adminUser.role
-        }
+          role: adminUser.role,
+        },
       });
 
       await request(app)
@@ -260,7 +256,7 @@ describe('Comments API', () => {
         .expect(204);
 
       const deletedComment = await prisma.comment.findUnique({
-        where: { id: testComment.id }
+        where: { id: testComment.id },
       });
       expect(deletedComment).toBeNull();
     });

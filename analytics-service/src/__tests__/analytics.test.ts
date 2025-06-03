@@ -6,8 +6,8 @@ import mongoose from 'mongoose';
 jest.mock('../services/userService', () => ({
   UserService: {
     verifyToken: jest.fn(),
-    getUserById: jest.fn()
-  }
+    getUserById: jest.fn(),
+  },
 }));
 
 const mockUserService = UserService as jest.Mocked<typeof UserService>;
@@ -23,8 +23,8 @@ describe('Analytics Service Integration Tests', () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'hashedpassword',
-        role: 'USER'
-      }
+        role: 'USER',
+      },
     });
 
     testAdmin = await prisma.user.create({
@@ -32,8 +32,8 @@ describe('Analytics Service Integration Tests', () => {
         name: 'Admin User',
         email: 'admin@example.com',
         password: 'hashedpassword',
-        role: 'ADMIN'
-      }
+        role: 'ADMIN',
+      },
     });
 
     testQuiz = await prisma.quiz.create({
@@ -49,17 +49,17 @@ describe('Analytics Service Integration Tests', () => {
               title: 'What is 2+2?',
               type: 'SINGLE',
               answers: ['3', '4', '5'],
-              correctAnswer: ['4']
+              correctAnswer: ['4'],
             },
             {
               title: 'Select all even numbers',
               type: 'MULTIPLE',
               answers: ['1', '2', '3', '4'],
-              correctAnswer: ['2', '4']
-            }
-          ]
-        }
-      }
+              correctAnswer: ['2', '4'],
+            },
+          ],
+        },
+      },
     });
 
     mockUserService.verifyToken.mockResolvedValue({
@@ -68,15 +68,15 @@ describe('Analytics Service Integration Tests', () => {
         id: testUser.id,
         name: testUser.name,
         email: testUser.email,
-        role: testUser.role
-      }
+        role: testUser.role,
+      },
     });
 
     mockUserService.getUserById.mockResolvedValue({
       id: testUser.id,
       name: testUser.name,
       email: testUser.email,
-      role: testUser.role
+      role: testUser.role,
     });
   });
 
@@ -93,7 +93,7 @@ describe('Analytics Service Integration Tests', () => {
       const loggedActivity = await ActivityLog.findOne({
         userId,
         action,
-        quizId
+        quizId,
       });
 
       expect(loggedActivity).toBeTruthy();
@@ -112,8 +112,8 @@ describe('Analytics Service Integration Tests', () => {
       const metadata = { score: 85, timeSpent: 120 };
 
       await AnalyticsService.logActivity(testUser.id, action, quizId, metadata);
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const popularity = await QuizPopularity.findOne({ quizId });
       expect(popularity).toBeTruthy();
@@ -123,17 +123,25 @@ describe('Analytics Service Integration Tests', () => {
 
     it('should get user stats correctly', async () => {
       const userId = testUser.id;
-      
-      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, { score: 90, timeSpent: 100 });
-      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, { score: 80, timeSpent: 150 });
-      await AnalyticsService.logActivity(userId, 'comment_added', testQuiz.id, { commentText: 'Great quiz!' });
+
+      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
+        score: 90,
+        timeSpent: 100,
+      });
+      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
+        score: 80,
+        timeSpent: 150,
+      });
+      await AnalyticsService.logActivity(userId, 'comment_added', testQuiz.id, {
+        commentText: 'Great quiz!',
+      });
 
       const stats = await AnalyticsService.getUserStats(userId);
 
       expect(Array.isArray(stats)).toBe(true);
       expect(stats.length).toBeGreaterThan(0);
-      
-      const quizCompletedStats = stats.find(s => s._id === 'quiz_completed');
+
+      const quizCompletedStats = stats.find((s) => s._id === 'quiz_completed');
       expect(quizCompletedStats).toBeTruthy();
       if (quizCompletedStats) {
         expect(quizCompletedStats.count).toBe(2);
@@ -142,10 +150,16 @@ describe('Analytics Service Integration Tests', () => {
     });
 
     it('should get popular quizzes correctly', async () => {
-      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, { score: 95, timeSpent: 90 });
-      await AnalyticsService.logActivity(testAdmin.id, 'quiz_completed', testQuiz.id, { score: 88, timeSpent: 110 });
-      
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
+        score: 95,
+        timeSpent: 90,
+      });
+      await AnalyticsService.logActivity(testAdmin.id, 'quiz_completed', testQuiz.id, {
+        score: 88,
+        timeSpent: 110,
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const popularQuizzes = await AnalyticsService.getPopularQuizzes(5);
 
@@ -160,7 +174,7 @@ describe('Analytics Service Integration Tests', () => {
     it('should handle errors gracefully', async () => {
       const invalidUserId = 'invalid-user-id';
       const action = 'invalid_action';
-      
+
       await expect(
         AnalyticsService.logActivity(invalidUserId, action, testQuiz.id, {})
       ).resolves.not.toThrow();
@@ -180,37 +194,41 @@ describe('Analytics Service Integration Tests', () => {
 
     it('should aggregate user statistics correctly', async () => {
       const userId = testUser.id;
-      
+
       await AnalyticsService.logActivity(userId, 'quiz_started', testQuiz.id, {});
-      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, { score: 95, timeSpent: 120 });
-      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, { score: 85, timeSpent: 140 });
+      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
+        score: 95,
+        timeSpent: 120,
+      });
+      await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
+        score: 85,
+        timeSpent: 140,
+      });
 
       const stats = await AnalyticsService.getUserStats(userId);
-      
+
       expect(stats.length).toBeGreaterThanOrEqual(1);
-      
-      const completedStats = stats.find(s => s._id === 'quiz_completed');
+
+      const completedStats = stats.find((s) => s._id === 'quiz_completed');
       if (completedStats) {
         expect(completedStats).toMatchObject({
           _id: 'quiz_completed',
           count: 2,
           avgScore: 90,
-          totalTimeSpent: 260
+          totalTimeSpent: 260,
         });
       }
     });
 
     it('should handle concurrent analytics operations', async () => {
       const promises = [];
-      
+
       for (let i = 0; i < 5; i++) {
         promises.push(
-          AnalyticsService.logActivity(
-            testUser.id, 
-            'quiz_completed', 
-            testQuiz.id, 
-            { score: 80 + i, timeSpent: 100 + i }
-          )
+          AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
+            score: 80 + i,
+            timeSpent: 100 + i,
+          })
         );
       }
 
@@ -218,7 +236,7 @@ describe('Analytics Service Integration Tests', () => {
 
       const activityCount = await ActivityLog.countDocuments({
         userId: testUser.id,
-        action: 'quiz_completed'
+        action: 'quiz_completed',
       });
 
       expect(activityCount).toBe(5);
@@ -233,7 +251,7 @@ describe('Analytics Service Integration Tests', () => {
 
       const activity = await ActivityLog.findOne({
         userId: testUser.id,
-        action: 'quiz_started'
+        action: 'quiz_started',
       });
 
       expect(activity).toBeTruthy();
@@ -244,14 +262,14 @@ describe('Analytics Service Integration Tests', () => {
 
     it('should handle invalid quiz IDs', async () => {
       const invalidQuizId = 'invalid-quiz-id';
-      
+
       await expect(
         AnalyticsService.logActivity(testUser.id, 'quiz_completed', invalidQuizId, { score: 90 })
       ).resolves.not.toThrow();
 
       const activity = await ActivityLog.findOne({
         userId: testUser.id,
-        quizId: invalidQuizId
+        quizId: invalidQuizId,
       });
 
       expect(activity).toBeTruthy();
@@ -263,8 +281,8 @@ describe('Analytics Service Integration Tests', () => {
           name: 'New User',
           email: 'new@example.com',
           password: 'hashedpassword',
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
 
       const stats = await AnalyticsService.getUserStats(newUser.id);
@@ -285,12 +303,10 @@ describe('Analytics Service Integration Tests', () => {
       const promises = [];
       for (let i = 0; i < batchSize; i++) {
         promises.push(
-          AnalyticsService.logActivity(
-            testUser.id,
-            'quiz_completed',
-            testQuiz.id,
-            { score: Math.floor(Math.random() * 100), timeSpent: Math.floor(Math.random() * 300) + 60 }
-          )
+          AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
+            score: Math.floor(Math.random() * 100),
+            timeSpent: Math.floor(Math.random() * 300) + 60,
+          })
         );
       }
 
@@ -299,7 +315,7 @@ describe('Analytics Service Integration Tests', () => {
 
       const count = await ActivityLog.countDocuments({
         userId: testUser.id,
-        action: 'quiz_completed'
+        action: 'quiz_completed',
       });
 
       expect(count).toBe(batchSize);
@@ -314,25 +330,23 @@ describe('Analytics Service Integration Tests', () => {
           score: 92,
           timeSpent: 180,
           userId: testUser.id,
-          quizId: testQuiz.id
-        }
+          quizId: testQuiz.id,
+        },
       });
 
-      await AnalyticsService.logActivity(
-        testUser.id,
-        'quiz_completed',
-        testQuiz.id,
-        { score: 92, timeSpent: 180 }
-      );
+      await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
+        score: 92,
+        timeSpent: 180,
+      });
 
       const pgEntry = await prisma.leaderboardEntry.findUnique({
-        where: { id: leaderboardEntry.id }
+        where: { id: leaderboardEntry.id },
       });
 
       const mongoActivity = await ActivityLog.findOne({
         userId: testUser.id,
         action: 'quiz_completed',
-        'metadata.score': 92
+        'metadata.score': 92,
       });
 
       expect(pgEntry).toBeTruthy();
@@ -343,14 +357,14 @@ describe('Analytics Service Integration Tests', () => {
 
     it('should handle timezone consistency', async () => {
       const beforeTime = new Date();
-      
+
       await AnalyticsService.logActivity(testUser.id, 'quiz_started', testQuiz.id, {});
-      
+
       const afterTime = new Date();
-      
+
       const activity = await ActivityLog.findOne({
         userId: testUser.id,
-        action: 'quiz_started'
+        action: 'quiz_started',
       });
 
       expect(activity).toBeTruthy();
@@ -376,11 +390,11 @@ describe('Analytics Service Integration Tests', () => {
         maliciousMetadata
       );
 
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       const activity = await ActivityLog.findOne({
         userId: testUser.id,
-        action: 'quiz_completed'
+        action: 'quiz_completed',
       }).sort({ timestamp: -1 });
 
       expect(activity).toBeTruthy();
@@ -394,7 +408,7 @@ describe('Analytics Service Integration Tests', () => {
       const largeMetadata = {
         score: 85,
         largeArray: new Array(100).fill('test'),
-        largeString: 'a'.repeat(1000)
+        largeString: 'a'.repeat(1000),
       };
 
       await expect(
@@ -403,7 +417,7 @@ describe('Analytics Service Integration Tests', () => {
 
       const activity = await ActivityLog.findOne({
         userId: testUser.id,
-        action: 'quiz_completed'
+        action: 'quiz_completed',
       });
 
       expect(activity).toBeTruthy();

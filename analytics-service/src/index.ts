@@ -6,11 +6,11 @@ import commentsRouter from './api/commentsApi';
 import leaderboardRouter from './api/leaderboardApi';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { 
-  basicRateLimit, 
-  helmetConfig, 
-  securityLogger, 
-  validateContentType 
+import {
+  basicRateLimit,
+  helmetConfig,
+  securityLogger,
+  validateContentType,
 } from './middleware/security';
 
 import { connectMongoDB } from './db/mongodb';
@@ -33,16 +33,18 @@ app.use(helmetConfig);
 app.use(securityLogger);
 app.use(basicRateLimit);
 
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    process.env.USER_SERVICE_URL || 'http://localhost:3001',
-    process.env.QUIZ_SERVICES_URL || 'http://localhost:3002'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      process.env.USER_SERVICE_URL || 'http://localhost:3001',
+      process.env.QUIZ_SERVICES_URL || 'http://localhost:3002',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -54,7 +56,7 @@ app.get('/health', (_req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 
@@ -101,5 +103,5 @@ initializeServer().then(() => {
     console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   });
 });
-  
+
 export default app;
