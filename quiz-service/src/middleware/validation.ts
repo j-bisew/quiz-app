@@ -65,9 +65,17 @@ export const validateCreateQuiz = [
     .isIn(['EASY', 'MEDIUM', 'HARD'])
     .withMessage('Difficulty must be EASY, MEDIUM, or HARD'),
   body('timeLimit')
-    .optional()
-    .isInt({ min: 30, max: 7200 })
-    .withMessage('Time limit must be between 30 seconds and 2 hours'),
+    .optional({ values: 'falsy' })
+    .custom((value) => {
+      if (value === '' || value === null || value === undefined) {
+        return true;
+      }
+      const num = Number(value);
+      if (isNaN(num) || num < 30 || num > 7200) {
+        throw new Error('Time limit must be between 30 seconds and 2 hours when provided');
+      }
+      return true;
+    }),
   body('questions')
     .isArray({ min: 1, max: 50 })
     .withMessage('Quiz must have between 1 and 50 questions'),
