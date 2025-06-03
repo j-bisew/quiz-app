@@ -1,44 +1,44 @@
-import express, { Request, Response } from "express";
-import prisma from "../db/prisma";
+import express, { Request, Response } from 'express';
+import prisma from '../db/prisma';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
-import { 
-  validateCreateQuiz, 
-  validateUpdateQuiz, 
-  validateSearch, 
-  validateCheckAnswers 
+import {
+  validateCreateQuiz,
+  validateUpdateQuiz,
+  validateSearch,
+  validateCheckAnswers,
 } from '../middleware/validation';
 
 const router = express.Router();
 
-router.get("/", getQuizzes);
-router.post("/", authMiddleware, validateCreateQuiz, createQuiz);
-router.get("/search", validateSearch, searchQuizzes);
-router.get("/:id", getQuiz);
-router.patch("/:id", authMiddleware, validateUpdateQuiz, updateQuiz);
-router.delete("/:id", authMiddleware, deleteQuiz);
-router.post("/:id/check-answers", validateCheckAnswers, checkAnswers);
+router.get('/', getQuizzes);
+router.post('/', authMiddleware, validateCreateQuiz, createQuiz);
+router.get('/search', validateSearch, searchQuizzes);
+router.get('/:id', getQuiz);
+router.patch('/:id', authMiddleware, validateUpdateQuiz, updateQuiz);
+router.delete('/:id', authMiddleware, deleteQuiz);
+router.post('/:id/check-answers', validateCheckAnswers, checkAnswers);
 
 async function getQuizzes(_req: Request, res: Response) {
   try {
     const quizzes = await prisma.quiz.findMany({
-        include: {
-            questions: true,
-            createdBy: {
-                select: {
-                    id: true,
-                    name: true,
-                },
-            },
-        _count: {
-              select: {
-                comments: true,
-                leaderboardEntries: true
-              }
-            }
+      include: {
+        questions: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
         },
-        orderBy: {
-          createdAt: 'desc'
-        }
+        _count: {
+          select: {
+            comments: true,
+            leaderboardEntries: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
     });
     res.json(quizzes);
   } catch (error) {
@@ -55,9 +55,9 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
 
     const quiz = await prisma.$transaction(async (tx) => {
       const user = await tx.user.findUnique({
-        where: { id: createdById }
+        where: { id: createdById },
       });
-      
+
       if (!user) {
         throw new Error('User not found');
       }
@@ -75,23 +75,23 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
               title: q.title,
               type: q.type,
               answers: q.answers,
-              correctAnswer: q.correctAnswer
-            }))
-          }
+              correctAnswer: q.correctAnswer,
+            })),
+          },
         },
         include: {
           questions: true,
           createdBy: {
             select: {
               id: true,
-              name: true
-            }
-          }
-        }
+              name: true,
+            },
+          },
+        },
       });
 
       console.log(`Quiz created: ${newQuiz.id} by user: ${createdById}`);
-      
+
       return newQuiz;
     });
 
@@ -100,48 +100,45 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
     console.error('Error creating quiz:', error);
     res.status(500).json({ error: 'An error occurred while creating a quiz' });
   }
-};
+}
 
 async function getQuiz(req: Request, res: Response) {
   try {
     const quizId = req.params.id;
     const quiz = await prisma.quiz.findUnique({
-        where: { id: quizId },
-        include: {
-            questions: {
-              orderBy: {
-                createdAt: 'asc'
-              }
-            },
-            createdBy: {
-                select: {
-                    id: true,
-                    name: true,
-                },
-            },
-            leaderboardEntries: {
-              select: {
-                score: true,
-                timeSpent: true,
-                user: {
-                  select: {
-                    name: true
-                  }
-                }
-              },
-              orderBy: [
-                { score: 'desc' },
-                { timeSpent: 'asc' }
-              ],
-              take: 5
-            },
-            _count: {
-              select: {
-                comments: true,
-                leaderboardEntries: true
-              }
-            }
+      where: { id: quizId },
+      include: {
+        questions: {
+          orderBy: {
+            createdAt: 'asc',
+          },
         },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        leaderboardEntries: {
+          select: {
+            score: true,
+            timeSpent: true,
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+          orderBy: [{ score: 'desc' }, { timeSpent: 'asc' }],
+          take: 5,
+        },
+        _count: {
+          select: {
+            comments: true,
+            leaderboardEntries: true,
+          },
+        },
+      },
     });
 
     if (!quiz) {
@@ -159,13 +156,13 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
   try {
     const quizId = req.params.id;
     const { title, description, category, difficulty, timeLimit, questions } = req.body;
-    
+
     const updatedQuiz = await prisma.$transaction(async (tx) => {
-      const existingQuiz = await tx.quiz.findUnique({ 
-        where: { id: quizId }, 
-        select: { createdById: true } 
+      const existingQuiz = await tx.quiz.findUnique({
+        where: { id: quizId },
+        select: { createdById: true },
       });
-      
+
       if (!existingQuiz) {
         throw new Error('Quiz not found');
       }
@@ -173,7 +170,7 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
       if (existingQuiz.createdById !== req.user!.id) {
         throw new Error('Unauthorized');
       }
-      
+
       await tx.question.deleteMany({ where: { quizId } });
 
       return await tx.quiz.update({
@@ -189,19 +186,19 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
               title: q.title,
               type: q.type,
               answers: q.answers,
-              correctAnswer: q.correctAnswer
-            }))
-          }
+              correctAnswer: q.correctAnswer,
+            })),
+          },
         },
         include: {
           questions: true,
           createdBy: {
             select: {
               id: true,
-              name: true
-            }
-          }
-        }
+              name: true,
+            },
+          },
+        },
       });
     });
 
@@ -222,31 +219,30 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
   }
 }
 
-
 async function deleteQuiz(req: AuthenticatedRequest, res: Response) {
   try {
     const quizId = req.params.id;
 
     await prisma.$transaction(async (tx) => {
-      const quiz = await tx.quiz.findUnique({ 
-        where: { id: quizId }, 
-        select: { createdById: true, title: true } 
+      const quiz = await tx.quiz.findUnique({
+        where: { id: quizId },
+        select: { createdById: true, title: true },
       });
 
       if (!quiz) {
         throw new Error('Quiz not found');
       }
-      
+
       if (quiz.createdById !== req.user!.id) {
         throw new Error('Unauthorized');
       }
-      
+
       await tx.quiz.delete({ where: { id: quizId } });
-      
+
       console.log(`Quiz deleted: ${quizId} (${quiz.title}) by user: ${req.user!.id}`);
     });
-    
-    res.status(204).json("Quiz deleted successfully");
+
+    res.status(204).json('Quiz deleted successfully');
   } catch (error) {
     console.error('Error deleting quiz:', error);
     if (error instanceof Error) {
@@ -262,7 +258,6 @@ async function deleteQuiz(req: AuthenticatedRequest, res: Response) {
     res.status(500).json({ error: 'An error occurred while deleting a quiz' });
   }
 }
-
 
 async function searchQuizzes(req: Request, res: Response) {
   try {
@@ -296,8 +291,8 @@ async function searchQuizzes(req: Request, res: Response) {
           select: {
             id: true,
             title: true,
-            type: true
-          }
+            type: true,
+          },
         },
         createdBy: {
           select: {
@@ -308,13 +303,11 @@ async function searchQuizzes(req: Request, res: Response) {
         _count: {
           select: {
             comments: true,
-            leaderboardEntries: true
-          }
-        }
+            leaderboardEntries: true,
+          },
+        },
       },
-      orderBy: [
-        { createdAt: 'desc' }
-      ]
+      orderBy: [{ createdAt: 'desc' }],
     });
 
     res.json(quizzes);
@@ -334,8 +327,8 @@ async function checkAnswers(req: Request, res: Response) {
       include: {
         questions: {
           orderBy: {
-            createdAt: 'asc'
-          }
+            createdAt: 'asc',
+          },
         },
       },
     });
@@ -347,11 +340,11 @@ async function checkAnswers(req: Request, res: Response) {
 
     const correctAnswers = quiz.questions.map((question: any) => question.correctAnswer);
     const totalQuestions = correctAnswers.length;
-    
+
     const correctCount = answers.reduce((count: number, answer: string[], index: number) => {
       return count + (arraysEqual(answer, correctAnswers[index]) ? 1 : 0);
     }, 0);
-    
+
     const scorePercent = Math.round((correctCount / totalQuestions) * 100);
 
     const detailedResults = quiz.questions.map((question: any, index: number) => ({
@@ -359,17 +352,16 @@ async function checkAnswers(req: Request, res: Response) {
       questionTitle: question.title,
       userAnswer: answers[index] || [],
       correctAnswer: question.correctAnswer,
-      isCorrect: arraysEqual(answers[index] || [], question.correctAnswer)
+      isCorrect: arraysEqual(answers[index] || [], question.correctAnswer),
     }));
 
-    res.json({ 
-      scorePercent, 
+    res.json({
+      scorePercent,
       timeSpent,
       correctCount,
       totalQuestions,
-      detailedResults
+      detailedResults,
     });
-  
   } catch (error) {
     console.error('Error checking answers:', error);
     res.status(500).json({ error: 'An error occurred while checking answers' });

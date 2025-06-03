@@ -5,11 +5,11 @@ import http from 'http';
 import quizRouter from './api/quizApi';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
-import { 
-  basicRateLimit, 
-  helmetConfig, 
-  securityLogger, 
-  validateContentType 
+import {
+  basicRateLimit,
+  helmetConfig,
+  securityLogger,
+  validateContentType,
 } from './middleware/security';
 
 const PORT = process.env.PORT || 3002;
@@ -20,16 +20,18 @@ app.use(helmetConfig);
 app.use(securityLogger);
 app.use(basicRateLimit);
 
-app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    process.env.USER_SERVICE_URL || 'http://localhost:3001',
-    process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3003'
-  ],
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      process.env.USER_SERVICE_URL || 'http://localhost:3001',
+      process.env.ANALYTICS_SERVICE_URL || 'http://localhost:3003',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -41,7 +43,7 @@ app.get('/health', (_req, res) => {
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
   });
 });
 

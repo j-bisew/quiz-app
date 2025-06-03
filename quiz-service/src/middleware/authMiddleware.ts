@@ -13,20 +13,19 @@ export async function authMiddleware(req: AuthenticatedRequest, res: Response, n
   if (!token) {
     res.status(401).json({ error: 'No token provided' });
     return;
-  } 
-    try {
-      const verification = await UserService.verifyToken(token);
-      
-      if (!verification.valid || !verification.user) {
-        res.status(401).json({ error: verification.error || 'Invalid token' });
-        return;
-      }
-      
-      req.user = verification.user;
-      next();
-    } catch (error) {
-      console.error('Error verifying token:', error);
-      res.status(401).json({ error: 'Authentication failed' });
+  }
+  try {
+    const verification = await UserService.verifyToken(token);
+
+    if (!verification.valid || !verification.user) {
+      res.status(401).json({ error: verification.error || 'Invalid token' });
+      return;
     }
-  
+
+    req.user = verification.user;
+    next();
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    res.status(401).json({ error: 'Authentication failed' });
+  }
 }

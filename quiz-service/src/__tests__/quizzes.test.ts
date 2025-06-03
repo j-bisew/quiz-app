@@ -29,8 +29,8 @@ describe('Quizzes API', () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'hashedpassword',
-        role: 'USER'
-      }
+        role: 'USER',
+      },
     });
 
     mockUserService.verifyToken.mockResolvedValue({
@@ -39,15 +39,15 @@ describe('Quizzes API', () => {
         id: testUser.id,
         name: testUser.name,
         email: testUser.email,
-        role: testUser.role
-      }
+        role: testUser.role,
+      },
     });
 
     mockUserService.getUserById.mockResolvedValue({
       id: testUser.id,
       name: testUser.name,
       email: testUser.email,
-      role: testUser.role
+      role: testUser.role,
     });
 
     testQuiz = await prisma.quiz.create({
@@ -63,26 +63,26 @@ describe('Quizzes API', () => {
               title: 'What is JavaScript?',
               type: 'SINGLE',
               answers: ['A programming language', 'A type of coffee', 'A framework'],
-              correctAnswer: ['A programming language']
+              correctAnswer: ['A programming language'],
             },
             {
               title: 'Which are programming languages?',
               type: 'MULTIPLE',
               answers: ['Python', 'Java', 'HTML', 'CSS'],
-              correctAnswer: ['Python', 'Java']
-            }
-          ]
-        }
+              correctAnswer: ['Python', 'Java'],
+            },
+          ],
+        },
       },
       include: {
         questions: true,
         createdBy: {
           select: {
             id: true,
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
   });
 
@@ -92,9 +92,7 @@ describe('Quizzes API', () => {
 
   describe('GET /api/quizzes', () => {
     it('should return all quizzes', async () => {
-      const response = await request(app)
-        .get('/api/quizzes')
-        .expect(200);
+      const response = await request(app).get('/api/quizzes').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(1);
@@ -108,9 +106,7 @@ describe('Quizzes API', () => {
       await prisma.question.deleteMany();
       await prisma.quiz.deleteMany();
 
-      const response = await request(app)
-        .get('/api/quizzes')
-        .expect(200);
+      const response = await request(app).get('/api/quizzes').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(0);
@@ -119,9 +115,7 @@ describe('Quizzes API', () => {
 
   describe('GET /api/quizzes/:id', () => {
     it('should return quiz by id', async () => {
-      const response = await request(app)
-        .get(`/api/quizzes/${testQuiz.id}`)
-        .expect(200);
+      const response = await request(app).get(`/api/quizzes/${testQuiz.id}`).expect(200);
 
       expect(response.body.id).toBe(testQuiz.id);
       expect(response.body.title).toBe('Test Quiz');
@@ -130,9 +124,7 @@ describe('Quizzes API', () => {
     });
 
     it('should return 404 for non-existent quiz', async () => {
-      const response = await request(app)
-        .get('/api/quizzes/nonexistent-id')
-        .expect(404);
+      const response = await request(app).get('/api/quizzes/nonexistent-id').expect(404);
 
       expect(response.body.error).toBe('Quiz not found');
     });
@@ -150,9 +142,9 @@ describe('Quizzes API', () => {
           title: 'What is the capital of France?',
           type: 'SINGLE',
           answers: ['Paris', 'London', 'Berlin'],
-          correctAnswer: ['Paris']
-        }
-      ]
+          correctAnswer: ['Paris'],
+        },
+      ],
     };
 
     it('should create a new quiz successfully', async () => {
@@ -169,10 +161,7 @@ describe('Quizzes API', () => {
     });
 
     it('should return 401 without authentication', async () => {
-      const response = await request(app)
-        .post('/api/quizzes')
-        .send(validQuizData)
-        .expect(401);
+      const response = await request(app).post('/api/quizzes').send(validQuizData).expect(401);
 
       expect(response.body.error).toBe('No token provided');
     });
@@ -180,7 +169,7 @@ describe('Quizzes API', () => {
     it('should return 401 with invalid token', async () => {
       mockUserService.verifyToken.mockResolvedValueOnce({
         valid: false,
-        error: 'Invalid token'
+        error: 'Invalid token',
       });
 
       const response = await request(app)
@@ -195,7 +184,7 @@ describe('Quizzes API', () => {
     it('should handle empty timeLimit', async () => {
       const quizDataWithEmptyTimeLimit = {
         ...validQuizData,
-        timeLimit: ''
+        timeLimit: '',
       };
 
       const response = await request(app)
@@ -220,9 +209,9 @@ describe('Quizzes API', () => {
           title: 'Updated question?',
           type: 'SINGLE',
           answers: ['Answer 1', 'Answer 2'],
-          correctAnswer: ['Answer 1']
-        }
-      ]
+          correctAnswer: ['Answer 1'],
+        },
+      ],
     };
 
     it('should update quiz successfully', async () => {
@@ -263,8 +252,8 @@ describe('Quizzes API', () => {
           id: 'different-user-id',
           name: 'Different User',
           email: 'different@example.com',
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
 
       const response = await request(app)
@@ -285,15 +274,13 @@ describe('Quizzes API', () => {
         .expect(204);
 
       const deletedQuiz = await prisma.quiz.findUnique({
-        where: { id: testQuiz.id }
+        where: { id: testQuiz.id },
       });
       expect(deletedQuiz).toBeNull();
     });
 
     it('should return 401 without authentication', async () => {
-      const response = await request(app)
-        .delete(`/api/quizzes/${testQuiz.id}`)
-        .expect(401);
+      const response = await request(app).delete(`/api/quizzes/${testQuiz.id}`).expect(401);
 
       expect(response.body.error).toBe('No token provided');
     });
@@ -323,18 +310,16 @@ describe('Quizzes API', () => {
                 title: 'What is Python?',
                 type: 'SINGLE',
                 answers: ['Snake', 'Programming language', 'Food'],
-                correctAnswer: ['Programming language']
-              }
-            ]
-          }
-        }
+                correctAnswer: ['Programming language'],
+              },
+            ],
+          },
+        },
       });
     });
 
     it('should search quizzes by title', async () => {
-      const response = await request(app)
-        .get('/api/quizzes/search?pattern=Python')
-        .expect(200);
+      const response = await request(app).get('/api/quizzes/search?pattern=Python').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(1);
@@ -359,9 +344,7 @@ describe('Quizzes API', () => {
     });
 
     it('should return 400 for missing search pattern', async () => {
-      const response = await request(app)
-        .get('/api/quizzes/search')
-        .expect(400);
+      const response = await request(app).get('/api/quizzes/search').expect(400);
 
       expect(response.body.error).toBe('Validation Error');
     });
@@ -369,16 +352,13 @@ describe('Quizzes API', () => {
 
   describe('POST /api/quizzes/:id/check-answers', () => {
     it('should check answers and return score', async () => {
-      const answers = [
-        ['A programming language'],
-        ['Python', 'Java']
-      ];
+      const answers = [['A programming language'], ['Python', 'Java']];
 
       const response = await request(app)
         .post(`/api/quizzes/${testQuiz.id}/check-answers`)
         .send({
           answers: answers,
-          timeSpent: 120
+          timeSpent: 120,
         })
         .expect(200);
 
@@ -387,16 +367,13 @@ describe('Quizzes API', () => {
     });
 
     it('should calculate partial score for some correct answers', async () => {
-      const answers = [
-        ['A programming language'],
-        ['Python']
-      ];
+      const answers = [['A programming language'], ['Python']];
 
       const response = await request(app)
         .post(`/api/quizzes/${testQuiz.id}/check-answers`)
         .send({
           answers: answers,
-          timeSpent: 90
+          timeSpent: 90,
         })
         .expect(200);
 
@@ -408,7 +385,7 @@ describe('Quizzes API', () => {
         .post('/api/quizzes/nonexistent-id/check-answers')
         .send({
           answers: [['answer']],
-          timeSpent: 60
+          timeSpent: 60,
         })
         .expect(404);
 

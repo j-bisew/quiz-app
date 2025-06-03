@@ -28,8 +28,8 @@ describe('Quiz Integration Tests', () => {
         name: 'Integration User',
         email: 'integration@example.com',
         password: 'hashedpassword',
-        role: 'USER'
-      }
+        role: 'USER',
+      },
     });
 
     mockUserService.verifyToken.mockResolvedValue({
@@ -38,8 +38,8 @@ describe('Quiz Integration Tests', () => {
         id: testUser.id,
         name: testUser.name,
         email: testUser.email,
-        role: testUser.role
-      }
+        role: testUser.role,
+      },
     });
   });
 
@@ -58,9 +58,9 @@ describe('Quiz Integration Tests', () => {
           title: 'What is integration testing?',
           type: 'SINGLE',
           answers: ['Testing components together', 'Testing in isolation', 'Manual testing'],
-          correctAnswer: ['Testing components together']
-        }
-      ]
+          correctAnswer: ['Testing components together'],
+        },
+      ],
     };
 
     const createResponse = await request(app)
@@ -71,9 +71,7 @@ describe('Quiz Integration Tests', () => {
 
     const quizId = createResponse.body.id;
 
-    const getResponse = await request(app)
-      .get(`/api/quizzes/${quizId}`)
-      .expect(200);
+    const getResponse = await request(app).get(`/api/quizzes/${quizId}`).expect(200);
 
     expect(getResponse.body.title).toBe(quizData.title);
 
@@ -88,7 +86,7 @@ describe('Quiz Integration Tests', () => {
       .post(`/api/quizzes/${quizId}/check-answers`)
       .send({
         answers: [['Testing components together']],
-        timeSpent: 45
+        timeSpent: 45,
       })
       .expect(200);
 
@@ -99,8 +97,6 @@ describe('Quiz Integration Tests', () => {
       .set('Authorization', 'Bearer valid-token')
       .expect(204);
 
-    await request(app)
-      .get(`/api/quizzes/${quizId}`)
-      .expect(404);
+    await request(app).get(`/api/quizzes/${quizId}`).expect(404);
   });
 });
