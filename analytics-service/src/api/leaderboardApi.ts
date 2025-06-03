@@ -12,7 +12,7 @@ router.get('/popular/quizzes', getPopularQuizzes);
 
 async function getQuizLeaderboard(req: Request, res: Response) {
   try {
-    const quizId = req.params.id;
+    const quizId = req.params.quizId;
     const leaderboard = await prisma.leaderboardEntry.findMany({
       where: { quizId },
       orderBy: [
@@ -44,7 +44,7 @@ async function getQuizLeaderboard(req: Request, res: Response) {
 
 async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
   try {
-    const quizId = req.params.id;
+    const quizId = req.params.quizId;
     const userId = req.user!.id;
     const { score, timeSpent } = req.body;
 
@@ -74,7 +74,7 @@ async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
 
 async function getUserStats(req: Request, res: Response) {
   try {
-    const userId = req.params.id;
+    const userId = req.params.userId;
       
       const stats = await prisma.leaderboardEntry.groupBy({
           by: ['userId', 'quizId'],

@@ -11,7 +11,7 @@ router.delete('/:quizId/:commentId', authMiddleware, deleteComment);
 
 async function getQuizComments(req: Request, res: Response) {
   try {
-    const quizId = req.params.id;
+    const quizId = req.params.quizId;
     const comments = await prisma.comment.findMany({
       where: { quizId },
       orderBy: { createdAt: 'desc' },
@@ -38,7 +38,7 @@ async function getQuizComments(req: Request, res: Response) {
 
 async function addComment(req: AuthenticatedRequest, res: Response) {
   try {
-    const quizId = req.params.id;
+    const quizId = req.params.quizId;
     const userId = req.user!.id;
     const { text } = req.body;
 
@@ -97,7 +97,7 @@ async function deleteComment(req: AuthenticatedRequest, res: Response) {
           select: { role: true }
         });
 
-        if (comment.userId !== req.user!.id && user?.role !== 'admin') {
+        if (comment.userId !== req.user!.id && user?.role !== 'ADMIN') {
             res.status(403).json({ error: 'You do not have permission to delete this comment' });
             return;
         }
