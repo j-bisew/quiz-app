@@ -2,12 +2,7 @@ import express, { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { AnalyticsService } from '../db/mongodb';
-import {
-  validateLeaderboardEntry,
-  validatePopularQuizzesQuery,
-  validateQuizId,
-  validateUserId,
-} from '../middleware/validation';
+import { validateAnalyticsData, validateLeaderboardEntry, validatePopularQuizzesQuery, validateQuizId, validateStatsQuery, validateUserId } from '../middleware/validation';
 
 const router = express.Router();
 
@@ -19,8 +14,9 @@ router.post(
   authMiddleware,
   addLeaderboardEntry
 );
-router.get('/user/:userId/stats', validateUserId, getUserStats);
+router.get('/user/:userId/stats', validateUserId, validateStatsQuery, getUserStats);
 router.get('/popular/quizzes', validatePopularQuizzesQuery, getPopularQuizzes);
+router.post('/analytics/log', validateAnalyticsData, authMiddleware, logAnalyticsData);
 
 async function getQuizLeaderboard(req: Request, res: Response) {
   try {
@@ -156,6 +152,29 @@ async function getPopularQuizzes(req: Request, res: Response) {
   } catch (error) {
     console.error('Error fetching popular quizzes:', error);
     res.status(500).json({ error: 'An error occurred while fetching popular quizzes' });
+  }
+}
+
+async function logAnalyticsData(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { action, quizId, metadata } = req.body;
+    const userId = req.user!.id;
+
+    await AnalyticsService.logActivity(
+      userId,
+      action,
+      quizId,
+      metadata,
+      req.ip
+    );
+
+    res.status(201).json({ 
+      message: 'Analytics data logged successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error logging analytics data:', error);
+    res.status(500).json({ error: 'An error occurred while logging analytics data' });
   }
 }
 
