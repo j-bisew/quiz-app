@@ -8,14 +8,14 @@ describe('Users API', () => {
 
   beforeEach(async () => {
     const hashedPassword = await bcrypt.hash('password123', 10);
-    
+
     const user1 = await prisma.user.create({
       data: {
         name: 'User One',
         email: 'user1@example.com',
         password: hashedPassword,
-        role: 'USER'
-      }
+        role: 'USER',
+      },
     });
 
     const user2 = await prisma.user.create({
@@ -23,8 +23,8 @@ describe('Users API', () => {
         name: 'User Two',
         email: 'user2@example.com',
         password: hashedPassword,
-        role: 'MODERATOR'
-      }
+        role: 'MODERATOR',
+      },
     });
 
     testUsers = [user1, user2];
@@ -32,9 +32,7 @@ describe('Users API', () => {
 
   describe('GET /api/users', () => {
     it('should return all users', async () => {
-      const response = await request(app)
-        .get('/api/users')
-        .expect(200);
+      const response = await request(app).get('/api/users').expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(2);
@@ -47,10 +45,8 @@ describe('Users API', () => {
   describe('GET /api/users/:id', () => {
     it('should return user by id', async () => {
       const userId = testUsers[0].id;
-      
-      const response = await request(app)
-        .get(`/api/users/${userId}`)
-        .expect(200);
+
+      const response = await request(app).get(`/api/users/${userId}`).expect(200);
 
       expect(response.body.id).toBe(userId);
       expect(response.body.email).toBe('user1@example.com');
@@ -58,9 +54,7 @@ describe('Users API', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
-      const response = await request(app)
-        .get('/api/users/nonexistent-id')
-        .expect(404);
+      const response = await request(app).get('/api/users/nonexistent-id').expect(404);
 
       expect(response.body.error).toBe('User not found');
     });
@@ -71,7 +65,7 @@ describe('Users API', () => {
       const userId = testUsers[0].id;
       const updateData = {
         name: 'Updated Name',
-        email: 'updated@example.com'
+        email: 'updated@example.com',
       };
 
       const response = await request(app)
@@ -98,22 +92,18 @@ describe('Users API', () => {
     it('should delete user successfully', async () => {
       const userId = testUsers[0].id;
 
-      const response = await request(app)
-        .delete(`/api/users/${userId}`)
-        .expect(200);
+      const response = await request(app).delete(`/api/users/${userId}`).expect(200);
 
       expect(response.body.message).toBe('User deleted successfully');
 
       const deletedUser = await prisma.user.findUnique({
-        where: { id: userId }
+        where: { id: userId },
       });
       expect(deletedUser).toBeNull();
     });
 
     it('should return 404 when deleting non-existent user', async () => {
-      const response = await request(app)
-        .delete('/api/users/nonexistent-id')
-        .expect(404);
+      const response = await request(app).delete('/api/users/nonexistent-id').expect(404);
 
       expect(response.body.error).toBe('User not found');
     });
@@ -122,7 +112,7 @@ describe('Users API', () => {
   describe('GET /api/users/email/:email', () => {
     it('should return user id by email', async () => {
       const userEmail = testUsers[0].email;
-      
+
       const response = await request(app)
         .get(`/api/users/email/${encodeURIComponent(userEmail)}`)
         .expect(200);
@@ -163,7 +153,7 @@ describe('Users API', () => {
       expect(response.body.message).toBe('Role updated successfully');
 
       const updatedUser = await prisma.user.findUnique({
-        where: { email: userEmail }
+        where: { email: userEmail },
       });
       expect(updatedUser?.role).toBe('ADMIN');
     });

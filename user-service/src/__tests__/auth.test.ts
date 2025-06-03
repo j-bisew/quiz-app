@@ -9,13 +9,10 @@ describe('Auth API', () => {
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
-        password: 'Password123'
+        password: 'Password123',
       };
 
-      const response = await request(app)
-        .post('/api/auth/register')
-        .send(userData)
-        .expect(201);
+      const response = await request(app).post('/api/auth/register').send(userData).expect(201);
 
       expect(response.body.message).toBe('Registration successful');
       expect(response.body.user.email).toBe(userData.email);
@@ -28,7 +25,7 @@ describe('Auth API', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send({
-          name: 'Test User'
+          name: 'Test User',
         })
         .expect(400);
 
@@ -39,18 +36,16 @@ describe('Auth API', () => {
       const userData = {
         name: 'Test User',
         email: 'test@example.com',
-        password: 'Password123'
+        password: 'Password123',
       };
 
-      await request(app)
-        .post('/api/auth/register')
-        .send(userData);
+      await request(app).post('/api/auth/register').send(userData);
 
       const response = await request(app)
         .post('/api/auth/register')
         .send({
           ...userData,
-          name: 'Another User'
+          name: 'Another User',
         })
         .expect(400);
 
@@ -66,8 +61,8 @@ describe('Auth API', () => {
           name: 'Test User',
           email: 'test@example.com',
           password: hashedPassword,
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
     });
 
@@ -76,7 +71,7 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           email: 'test@example.com',
-          password: 'password123'
+          password: 'password123',
         })
         .expect(200);
 
@@ -89,7 +84,7 @@ describe('Auth API', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'test@example.com'
+          email: 'test@example.com',
         })
         .expect(400);
 
@@ -101,7 +96,7 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           email: 'nonexistent@example.com',
-          password: 'password123'
+          password: 'password123',
         })
         .expect(404);
 
@@ -113,7 +108,7 @@ describe('Auth API', () => {
         .post('/api/auth/login')
         .send({
           email: 'test@example.com',
-          password: 'wrongpassword'
+          password: 'wrongpassword',
         })
         .expect(401);
 
@@ -132,18 +127,16 @@ describe('Auth API', () => {
           name: 'Test User',
           email: 'test@example.com',
           password: hashedPassword,
-          role: 'USER'
-        }
+          role: 'USER',
+        },
       });
       userId = user.id;
 
-      const loginResponse = await request(app)
-        .post('/api/auth/login')
-        .send({
-          email: 'test@example.com',
-          password: 'password123'
-        });
-      
+      const loginResponse = await request(app).post('/api/auth/login').send({
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
       validToken = loginResponse.body.token;
     });
 
@@ -159,10 +152,7 @@ describe('Auth API', () => {
     });
 
     it('should return 400 when token is missing', async () => {
-      const response = await request(app)
-        .post('/api/auth/verify-token')
-        .send({})
-        .expect(400);
+      const response = await request(app).post('/api/auth/verify-token').send({}).expect(400);
 
       expect(response.body.error).toBe('Token is required');
     });

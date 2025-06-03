@@ -4,16 +4,16 @@ import { Request, Response, NextFunction } from 'express';
 export function handleValidationErrors(req: Request, res: Response, next: NextFunction): void {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    const formattedErrors = errors.array().map(error => ({
+    const formattedErrors = errors.array().map((error) => ({
       field: error.type === 'field' ? error.path : 'unknown',
       message: error.msg,
-      value: error.type === 'field' ? error.value : undefined
+      value: error.type === 'field' ? error.value : undefined,
     }));
-    
+
     res.status(400).json({
       error: 'Validation Error',
       message: 'Invalid input data',
-      details: formattedErrors
+      details: formattedErrors,
     });
     return;
   }
@@ -21,14 +21,9 @@ export function handleValidationErrors(req: Request, res: Response, next: NextFu
 }
 
 export const validateLogin = [
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email address'),
-  body('password')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters long'),
-  handleValidationErrors
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
+  handleValidationErrors,
 ];
 
 export const validateRegister = [
@@ -36,16 +31,15 @@ export const validateRegister = [
     .trim()
     .isLength({ min: 2, max: 50 })
     .withMessage('Name must be between 2 and 50 characters'),
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Please provide a valid email address'),
+  body('email').isEmail().normalizeEmail().withMessage('Please provide a valid email address'),
   body('password')
     .isLength({ min: 6, max: 128 })
     .withMessage('Password must be between 6 and 128 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain at least one lowercase letter, one uppercase letter, and one number'),
-  handleValidationErrors
+    .withMessage(
+      'Password must contain at least one lowercase letter, one uppercase letter, and one number'
+    ),
+  handleValidationErrors,
 ];
 
 export const validateCreateQuiz = [
@@ -78,20 +72,16 @@ export const validateCreateQuiz = [
   body('questions.*.type')
     .isIn(['SINGLE', 'MULTIPLE', 'OPEN'])
     .withMessage('Question type must be SINGLE, MULTIPLE, or OPEN'),
-  body('questions.*.answers')
-    .isArray()
-    .withMessage('Question answers must be an array'),
+  body('questions.*.answers').isArray().withMessage('Question answers must be an array'),
   body('questions.*.correctAnswer')
     .isArray({ min: 1 })
     .withMessage('Question must have at least one correct answer'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 export const validateUpdateQuiz = [
-  param('id')
-    .isLength({ min: 1 })
-    .withMessage('Quiz ID is required'),
-  ...validateCreateQuiz
+  param('id').isLength({ min: 1 }).withMessage('Quiz ID is required'),
+  ...validateCreateQuiz,
 ];
 
 export const validateComment = [
@@ -99,7 +89,7 @@ export const validateComment = [
     .trim()
     .isLength({ min: 1, max: 500 })
     .withMessage('Comment must be between 1 and 500 characters'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 export const validateSearch = [
@@ -107,47 +97,34 @@ export const validateSearch = [
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage('Search pattern must be between 1 and 100 characters'),
-  handleValidationErrors
+  handleValidationErrors,
 ];
 
 export const validateCheckAnswers = [
-  body('answers')
-    .isArray()
-    .withMessage('Answers must be an array'),
-  body('timeSpent')
-    .isInt({ min: 1 })
-    .withMessage('Time spent must be a positive integer'),
-  handleValidationErrors
+  body('answers').isArray().withMessage('Answers must be an array'),
+  body('timeSpent').isInt({ min: 1 }).withMessage('Time spent must be a positive integer'),
+  handleValidationErrors,
 ];
 
 export const validateLeaderboardEntry = [
-  body('score')
-    .isInt({ min: 0, max: 100 })
-    .withMessage('Score must be between 0 and 100'),
-  body('timeSpent')
-    .isInt({ min: 1 })
-    .withMessage('Time spent must be a positive integer'),
-  handleValidationErrors
+  body('score').isInt({ min: 0, max: 100 }).withMessage('Score must be between 0 and 100'),
+  body('timeSpent').isInt({ min: 1 }).withMessage('Time spent must be a positive integer'),
+  handleValidationErrors,
 ];
 
 export const validateIdParam = [
-  param('id')
-    .isLength({ min: 1 })
-    .withMessage('ID parameter is required'),
-  handleValidationErrors
+  param('id').isLength({ min: 1 }).withMessage('ID parameter is required'),
+  handleValidationErrors,
 ];
 
 export const validateEmailParam = [
-  param('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Valid email parameter is required'),
-  handleValidationErrors
+  param('email').isEmail().normalizeEmail().withMessage('Valid email parameter is required'),
+  handleValidationErrors,
 ];
 
 export const validateUpdateRole = [
   body('role')
     .isIn(['USER', 'MODERATOR', 'ADMIN'])
     .withMessage('Role must be USER, MODERATOR, or ADMIN'),
-  handleValidationErrors
+  handleValidationErrors,
 ];

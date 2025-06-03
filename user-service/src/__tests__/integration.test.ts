@@ -8,7 +8,7 @@ describe('Integration Tests', () => {
       .send({
         name: 'Integration Test User',
         email: 'integration@test.com',
-        password: 'Password123'
+        password: 'Password123',
       })
       .expect(201);
 
@@ -18,21 +18,16 @@ describe('Integration Tests', () => {
       .post('/api/auth/login')
       .send({
         email: 'integration@test.com',
-        password: 'Password123'
+        password: 'Password123',
       })
       .expect(200);
 
     const token = loginResponse.body.token;
     expect(token).toBeDefined();
 
-    await request(app)
-      .post('/api/auth/verify-token')
-      .send({ token })
-      .expect(200);
+    await request(app).post('/api/auth/verify-token').send({ token }).expect(200);
 
-    const getUserResponse = await request(app)
-      .get(`/api/users/${userId}`)
-      .expect(200);
+    const getUserResponse = await request(app).get(`/api/users/${userId}`).expect(200);
 
     expect(getUserResponse.body.email).toBe('integration@test.com');
 
@@ -41,43 +36,31 @@ describe('Integration Tests', () => {
       .send({ name: 'Updated Integration User' })
       .expect(200);
 
-    const updatedUserResponse = await request(app)
-      .get(`/api/users/${userId}`)
-      .expect(200);
+    const updatedUserResponse = await request(app).get(`/api/users/${userId}`).expect(200);
 
     expect(updatedUserResponse.body.name).toBe('Updated Integration User');
 
-    await request(app)
-      .delete(`/api/users/${userId}`)
-      .expect(200);
+    await request(app).delete(`/api/users/${userId}`).expect(200);
 
-    await request(app)
-      .get(`/api/users/${userId}`)
-      .expect(404);
+    await request(app).get(`/api/users/${userId}`).expect(404);
   });
 
   it('should handle error cases properly', async () => {
     const userData = {
       name: 'Test User',
       email: 'duplicate@test.com',
-      password: 'Password123'
+      password: 'Password123',
     };
 
-    await request(app)
-      .post('/api/auth/register')
-      .send(userData)
-      .expect(201);
+    await request(app).post('/api/auth/register').send(userData).expect(201);
 
-    await request(app)
-      .post('/api/auth/register')
-      .send(userData)
-      .expect(400);
+    await request(app).post('/api/auth/register').send(userData).expect(400);
 
     await request(app)
       .post('/api/auth/login')
       .send({
         email: 'duplicate@test.com',
-        password: 'WrongPassword'
+        password: 'WrongPassword',
       })
       .expect(401);
   });
