@@ -2,12 +2,13 @@ import express, { Request, Response } from 'express';
 import prisma from '.././db/prisma';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { AnalyticsService } from '../db/mongodb';
+import { validateComment, validateQuizId, validateCommentId } from '../middleware/validation'; // 👈 DODAJ
 
 const router = express.Router();
 
-router.get('/:quizId', getQuizComments);
-router.post('/:quizId', authMiddleware, addComment);
-router.delete('/:quizId/:commentId', authMiddleware, deleteComment);
+router.get('/:quizId', validateQuizId, getQuizComments);
+router.post('/:quizId', authMiddleware, validateQuizId, validateComment, addComment);
+router.delete('/:quizId/:commentId', authMiddleware, validateCommentId, deleteComment);
 
 async function getQuizComments(req: Request, res: Response) {
   try {

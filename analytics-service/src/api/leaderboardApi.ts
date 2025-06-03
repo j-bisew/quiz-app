@@ -2,13 +2,25 @@ import express, { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import { authMiddleware, AuthenticatedRequest } from '../middleware/authMiddleware';
 import { AnalyticsService } from '../db/mongodb';
+import {
+  validateLeaderboardEntry,
+  validatePopularQuizzesQuery,
+  validateQuizId,
+  validateUserId,
+} from '../middleware/validation';
 
 const router = express.Router();
 
-router.get('/:quizId', getQuizLeaderboard);
-router.post('/:quizId', authMiddleware, addLeaderboardEntry);
-router.get('/user/:userId/stats', getUserStats);
-router.get('/popular/quizzes', getPopularQuizzes);
+router.get('/:quizId', validateQuizId, getQuizLeaderboard);
+router.post(
+  '/:quizId',
+  validateQuizId,
+  validateLeaderboardEntry,
+  authMiddleware,
+  addLeaderboardEntry
+);
+router.get('/user/:userId/stats', validateUserId, getUserStats);
+router.get('/popular/quizzes', validatePopularQuizzesQuery, getPopularQuizzes);
 
 async function getQuizLeaderboard(req: Request, res: Response) {
   try {

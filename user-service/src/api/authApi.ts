@@ -2,10 +2,11 @@ import express, { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { validateLogin, validateRegister } from '../middleware/validation';
 const router = express.Router();
 
-router.post('/login', login);
-router.post('/register', register);
+router.post('/login', validateLogin, login);
+router.post('/register', validateRegister, register);
 router.post('/verify-token', verifyToken);
 
 async function login(req: Request, res: Response) {
