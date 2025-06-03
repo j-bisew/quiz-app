@@ -18,6 +18,9 @@ model User {
   createdQuizzes Quiz[]
   comments Comment[]
   leaderboardEntries LeaderboardEntry[]
+
+  @@index([role])
+  @@index([createdAt])
 }
 
 model Quiz {
@@ -34,6 +37,14 @@ model Quiz {
   timeLimit Int?
   comments Comment[]
   leaderboardEntries LeaderboardEntry[]
+
+  @@index([category])
+  @@index([difficulty])
+  @@index([createdById])
+  @@index([createdAt])
+  @@index([timeLimit])
+  @@index([category, difficulty])
+  @@index([category, createdAt])
 }
 
 model Question {
@@ -46,6 +57,9 @@ model Question {
   quizId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([quizId])
+  @@index([type])
 }
 
 model Comment {
@@ -57,6 +71,11 @@ model Comment {
   quizId    String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([quizId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([quizId, createdAt])
 }
 
 model LeaderboardEntry {
@@ -69,6 +88,11 @@ model LeaderboardEntry {
   timeSpent Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([quizId, score])
+  @@index([userId])
+  @@index([score])
+  @@unique([userId, quizId])
 }
 
 enum Role {
