@@ -1,15 +1,15 @@
 import express, { Request, Response } from "express";
 import prisma from "../db/prisma";
-
+import { validateIdParam, validateUpdateRole, validateSearch, validateEmailParam } from "../middleware/validation";
 const router = express.Router();
 
 router.get("/", getUsers);
-router.get("/:id", getUser);
-router.patch("/:id", updateUser);
-router.delete("/:id", deleteUser);
-router.get("/email/:email", searchByEmail);
-router.delete("/email/:email", deleteUserByEmail);
-router.patch("/email/:email/role", updateRoleByEmail);
+router.get("/:id", validateIdParam, getUser);
+router.patch("/:id", validateIdParam, updateUser);
+router.delete("/:id", validateIdParam, deleteUser);
+router.get("/email/:email", validateEmailParam, searchByEmail);
+router.delete("/email/:email", validateEmailParam, deleteUserByEmail);
+router.patch("/email/:email/role", validateEmailParam, validateUpdateRole, updateRoleByEmail);
 
 async function getUsers(_req: Request, res: Response) {
   try {

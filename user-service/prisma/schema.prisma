@@ -88,6 +88,3 @@ enum QuestionType {
   MULTIPLE
   OPEN
 }
-
-// npx prisma db push dodanie do bazy danych
-// npx prisma generate generowanie nowego clienta

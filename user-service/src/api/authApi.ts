@@ -2,7 +2,6 @@ import express, { Request, Response } from 'express';
 import prisma from '../db/prisma';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-
 const router = express.Router();
 
 router.post('/login', login);
