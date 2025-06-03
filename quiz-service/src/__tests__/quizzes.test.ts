@@ -363,7 +363,7 @@ describe('Quizzes API', () => {
         .get('/api/quizzes/search')
         .expect(400);
 
-      expect(response.body.error).toBe('Invalid search pattern');
+      expect(response.body.error).toBe('Validation Error');
     });
   });
 
