@@ -22,8 +22,7 @@ services:
     volumes:
       - mongodb_data:/data/db
 
-  # Serwis tylko do seed'owania bazy
-  db-seeder:
+  db-setup:
     build:
       context: .
       dockerfile: user-service/Dockerfile
@@ -33,11 +32,12 @@ services:
       - postgres
     command: >
       sh -c "
-        npx prisma db push &&
+        npx prisma migrate deploy &&
+        npx prisma generate &&
         npx prisma db seed
       "
     profiles:
-      - seed
+      - setup
 
   user-service:
     build:

@@ -1,0 +1,33 @@
+{
+  "name": "quiz-backend",
+  "private": true,
+  "scripts": {
+    "start": "npm run dev",
+    "dev": "docker-compose up",
+    "dev:build": "docker-compose build",
+    "dev:logs": "docker-compose logs -f",
+    "dev:stop": "docker-compose down",
+
+    "migrate": "node scripts/migrate.js",
+    "migrate:sync": "node scripts/migrate.js && npm run sync",
+
+    "db:setup": "docker-compose --profile setup up db-setup",
+    "db:reset": "docker-compose down -v && npm run db:setup",
+
+    "sync": "node scripts/sync-schemas.js",
+    "sync:force": "node scripts/sync-schemas.js --force",
+
+    "test": "npm run test:sequential",
+
+    "test:sequential": "npm run test:user && npm run test:quiz && npm run test:analytics",
+    "test:user": "cd user-service && npm test",
+    "test:quiz": "cd quiz-service && npm test", 
+    "test:analytics": "cd analytics-service && npm test",
+
+    "test:coverage": "npm run test:user:coverage && npm run test:quiz:coverage && npm run test:analytics:coverage",
+    "test:user:coverage": "cd user-service && npm run test:coverage",
+    "test:quiz:coverage": "cd quiz-service && npm run test:coverage",
+    "test:analytics:coverage": "cd analytics-service && npm run test:coverage"
+  },
+  "devDependencies": {}
+}

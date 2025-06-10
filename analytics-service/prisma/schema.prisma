@@ -7,6 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum QuestionType {
+  SINGLE
+  MULTIPLE
+  OPEN
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -28,6 +47,7 @@ model Quiz {
   title     String
   description String
   questions Question[]
+  maxPoints Int @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   createdBy User     @relation(fields: [createdById], references: [id], onDelete: Cascade)
@@ -45,6 +65,7 @@ model Quiz {
   @@index([timeLimit])
   @@index([category, difficulty])
   @@index([category, createdAt])
+  @@index([maxPoints])
 }
 
 model Question {
@@ -53,6 +74,7 @@ model Question {
   type     QuestionType @default(SINGLE)
   answers   String[] @default([])
   correctAnswer String[]
+  points    Int @default(1)
   quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
   quizId    String
   createdAt DateTime @default(now())
@@ -60,6 +82,7 @@ model Question {
 
   @@index([quizId])
   @@index([type])
+  @@index([points])
 }
 
 model Comment {
@@ -81,6 +104,8 @@ model Comment {
 model LeaderboardEntry {
   id        String   @id @default(cuid())
   score     Int
+  maxScore Int
+  percentage Float @default(0)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId    String
   quiz      Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
@@ -90,25 +115,9 @@ model LeaderboardEntry {
   updatedAt DateTime @updatedAt
 
   @@index([quizId, score])
+  @@index([quizId, percentage])
   @@index([userId])
   @@index([score])
+  @@index([percentage])
   @@unique([userId, quizId])
-}
-
-enum Role {
-  USER
-  MODERATOR
-  ADMIN
-}
-
-enum Difficulty {
-  EASY
-  MEDIUM
-  HARD
-}
-
-enum QuestionType {
-  SINGLE
-  MULTIPLE
-  OPEN
 }
