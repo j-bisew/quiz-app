@@ -2,6 +2,7 @@ import request from 'supertest';
 import app from './testApp';
 import { prisma } from './setup';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 describe('Users API', () => {
   let testUsers: any[] = [];
@@ -61,7 +62,32 @@ describe('Users API', () => {
   });
 
   describe('PATCH /api/users/:id', () => {
-    it('should update user successfully', async () => {
+    it('should update user successfully with valid token', async () => {
+      const userId = testUsers[0].id;
+      const userEmail = testUsers[0].email;
+      const updateData = {
+        name: 'Updated Name',
+        password: 'passWord123',
+      };
+
+      const mockToken = jwt.sign(
+        { userId: userId },
+        'super-secret-token',
+        { expiresIn: '1h' }
+      );
+
+      const response = await request(app)
+        .patch(`/api/users/${userId}`)
+        .set('Authorization', `Bearer ${mockToken}`)
+        .send(updateData)
+        .expect(200);
+
+      expect(response.body.name).toBe(updateData.name);
+      expect(response.body.email).toBe(userEmail);
+      expect(response.body.id).toBe(userId);
+    });
+
+    it('should return 401 when no token is provided', async () => {
       const userId = testUsers[0].id;
       const updateData = {
         name: 'Updated Name',
@@ -71,16 +97,37 @@ describe('Users API', () => {
       const response = await request(app)
         .patch(`/api/users/${userId}`)
         .send(updateData)
-        .expect(200);
+        .expect(401);
 
-      expect(response.body.name).toBe(updateData.name);
-      expect(response.body.email).toBe(updateData.email);
-      expect(response.body.id).toBe(userId);
+      expect(response.body.error).toBe('No token provided');
+    });
+
+    it('should return 401 with invalid token', async () => {
+      const userId = testUsers[0].id;
+      const updateData = {
+        name: 'Updated Name',
+        email: 'updated@example.com',
+      };
+
+      const response = await request(app)
+        .patch(`/api/users/${userId}`)
+        .set('Authorization', 'Bearer invalid-token')
+        .send(updateData)
+        .expect(401);
+
+      expect(response.body.error).toBe('Invalid token');
     });
 
     it('should return 404 when updating non-existent user', async () => {
+      const mockToken = jwt.sign(
+        { userId: 'nonexistent-id' },
+        'super-secret-token',
+        { expiresIn: '1h' }
+      );
+      
       const response = await request(app)
         .patch('/api/users/nonexistent-id')
+        .set('Authorization', `Bearer ${mockToken}`)
         .send({ name: 'New Name' })
         .expect(404);
 
@@ -89,10 +136,19 @@ describe('Users API', () => {
   });
 
   describe('DELETE /api/users/:id', () => {
-    it('should delete user successfully', async () => {
+    it('should delete user successfully with valid token', async () => {
       const userId = testUsers[0].id;
 
-      const response = await request(app).delete(`/api/users/${userId}`).expect(200);
+      const mockToken = jwt.sign(
+        { userId: userId },
+        'super-secret-token',
+        { expiresIn: '1h' }
+      );
+
+      const response = await request(app)
+        .delete(`/api/users/${userId}`)
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(200);
 
       expect(response.body.message).toBe('User deleted successfully');
 
@@ -102,12 +158,43 @@ describe('Users API', () => {
       expect(deletedUser).toBeNull();
     });
 
+    it('should return 401 when no token is provided', async () => {
+      const userId = testUsers[0].id;
+
+      const response = await request(app)
+        .delete(`/api/users/${userId}`)
+        .expect(401);
+
+      expect(response.body.error).toBe('No token provided');
+    });
+
+    it('should return 401 with invalid token', async () => {
+      const userId = testUsers[0].id;
+
+      const response = await request(app)
+        .delete(`/api/users/${userId}`)
+        .set('Authorization', 'Bearer invalid-token')
+        .expect(401);
+
+      expect(response.body.error).toBe('Invalid token');
+    });
+
     it('should return 404 when deleting non-existent user', async () => {
-      const response = await request(app).delete('/api/users/nonexistent-id').expect(404);
+      const mockToken = jwt.sign(
+        { userId: 'nonexistent-id' },
+        'super-secret-token',
+        { expiresIn: '1h' }
+      );
+
+      const response = await request(app)
+        .delete('/api/users/nonexistent-id')
+        .set('Authorization', `Bearer ${mockToken}`)
+        .expect(404);
 
       expect(response.body.error).toBe('User not found');
     });
   });
+
 
   describe('GET /api/users/email/:email', () => {
     it('should return user id by email', async () => {

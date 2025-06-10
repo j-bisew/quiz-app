@@ -33,6 +33,7 @@ describe('Integration Tests', () => {
 
     await request(app)
       .patch(`/api/users/${userId}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ name: 'Updated Integration User' })
       .expect(200);
 
@@ -40,7 +41,10 @@ describe('Integration Tests', () => {
 
     expect(updatedUserResponse.body.name).toBe('Updated Integration User');
 
-    await request(app).delete(`/api/users/${userId}`).expect(200);
+    await request(app)
+      .delete(`/api/users/${userId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
 
     await request(app).get(`/api/users/${userId}`).expect(404);
   });

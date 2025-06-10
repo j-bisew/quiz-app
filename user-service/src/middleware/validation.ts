@@ -1,4 +1,4 @@
-import { body, query, param, validationResult } from 'express-validator';
+import { body, param, validationResult } from 'express-validator';
 import { Request, Response, NextFunction } from 'express';
 
 export function handleValidationErrors(req: Request, res: Response, next: NextFunction): void {
