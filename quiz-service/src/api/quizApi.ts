@@ -11,8 +11,10 @@ import {
 const router = express.Router();
 
 router.get('/', getQuizzes);
+router.get('/my-quizzes', authMiddleware, getMyQuizzes);
 router.post('/', authMiddleware, validateCreateQuiz, createQuiz);
 router.get('/search', validateSearch, searchQuizzes);
+router.get('/my-quizzes/search', authMiddleware, validateSearch, searchMyQuizzes);
 router.get('/:id', getQuiz);
 router.patch('/:id', authMiddleware, validateUpdateQuiz, updateQuiz);
 router.delete('/:id', authMiddleware, deleteQuiz);
@@ -21,6 +23,37 @@ router.post('/:id/check-answers', validateCheckAnswers, checkAnswers);
 async function getQuizzes(_req: Request, res: Response) {
   try {
     const quizzes = await prisma.quiz.findMany({
+      include: {
+        questions: true,
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+            leaderboardEntries: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    res.json(quizzes);
+  } catch (error) {
+    console.error('Error fetching quizzes:', error);
+    res.status(500).json({ error: 'An error occurred while fetching quizzes' });
+  }
+}
+
+async function getMyQuizzes(req: AuthenticatedRequest, res: Response) {
+  const createdById = req.user!.id;
+  try {
+    const quizzes = await prisma.quiz.findMany({
+      where: { createdById },
       include: {
         questions: true,
         createdBy: {
@@ -62,6 +95,10 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
         throw new Error('User not found');
       }
 
+      const maxPoints = questions.reduce((sum: number, question: any) => {
+        return sum + (question.points);
+      }, 0);
+
       const newQuiz = await tx.quiz.create({
         data: {
           title,
@@ -69,6 +106,7 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
           category,
           difficulty,
           timeLimit: newTimeLimit,
+          maxPoints,
           createdById,
           questions: {
             create: questions.map((q: any) => ({
@@ -76,6 +114,7 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
               type: q.type,
               answers: q.answers,
               correctAnswer: q.correctAnswer,
+              points: q.points
             })),
           },
         },
@@ -109,6 +148,12 @@ async function getQuiz(req: Request, res: Response) {
       where: { id: quizId },
       include: {
         questions: {
+          select: {
+            title: true,
+            type: true,
+            answers: true,
+            points: true,
+          },
           orderBy: {
             createdAt: 'asc',
           },
@@ -122,6 +167,8 @@ async function getQuiz(req: Request, res: Response) {
         leaderboardEntries: {
           select: {
             score: true,
+            maxScore: true,
+            percentage: true,
             timeSpent: true,
             user: {
               select: {
@@ -129,7 +176,7 @@ async function getQuiz(req: Request, res: Response) {
               },
             },
           },
-          orderBy: [{ score: 'desc' }, { timeSpent: 'asc' }],
+          orderBy: [{ percentage: 'desc' }, { timeSpent: 'asc' }],
           take: 5,
         },
         _count: {
@@ -171,6 +218,10 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
         throw new Error('Unauthorized');
       }
 
+      const maxPoints = questions.reduce((sum: number, question: any) => {
+        return sum + question.points;
+      }, 0);
+
       await tx.question.deleteMany({ where: { quizId } });
 
       return await tx.quiz.update({
@@ -181,12 +232,14 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
           category,
           difficulty,
           timeLimit,
+          maxPoints,
           questions: {
             create: questions.map((q: any) => ({
               title: q.title,
               type: q.type,
               answers: q.answers,
               correctAnswer: q.correctAnswer,
+              points: q.points,
             })),
           },
         },
@@ -261,7 +314,8 @@ async function deleteQuiz(req: AuthenticatedRequest, res: Response) {
 
 async function searchQuizzes(req: Request, res: Response) {
   try {
-    const { pattern, category, difficulty } = req.query;
+    const { pattern, category, difficulty, page = 1, limit = 10 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
 
     if (!pattern || typeof pattern !== 'string') {
       res.status(400).json({ error: 'Invalid search pattern' });
@@ -292,6 +346,7 @@ async function searchQuizzes(req: Request, res: Response) {
             id: true,
             title: true,
             type: true,
+            points: true,
           },
         },
         createdBy: {
@@ -308,6 +363,74 @@ async function searchQuizzes(req: Request, res: Response) {
         },
       },
       orderBy: [{ createdAt: 'desc' }],
+      take: Number(limit),
+      skip: skip,
+    });
+
+    res.json(quizzes);
+  } catch (error) {
+    console.error('Error searching quizzes:', error);
+    res.status(500).json({ error: 'An error occurred while searching quizzes' });
+  }
+}
+
+async function searchMyQuizzes(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { pattern, category, difficulty, page = 1, limit = 10 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+    const createdById = req.user!.id;
+
+    if (!pattern || typeof pattern !== 'string') {
+      res.status(400).json({ error: 'Invalid search pattern' });
+      return;
+    }
+
+    const whereClause: any = {
+      OR: [
+        { title: { contains: pattern, mode: 'insensitive' } },
+        { description: { contains: pattern, mode: 'insensitive' } },
+        { category: { contains: pattern, mode: 'insensitive' } },
+      ],
+    };
+
+    if (category && typeof category === 'string') {
+      whereClause.category = { equals: category, mode: 'insensitive' };
+    }
+
+    if (difficulty && typeof difficulty === 'string') {
+      whereClause.difficulty = difficulty;
+    }
+
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        createdById,
+        ...whereClause,
+      },
+      include: {
+        questions: {
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            points: true,
+          },
+        },
+        createdBy: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            comments: true,
+            leaderboardEntries: true,
+          },
+        },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+      take: Number(limit),
+      skip: skip,
     });
 
     res.json(quizzes);
@@ -321,6 +444,8 @@ async function checkAnswers(req: Request, res: Response) {
   try {
     const { answers, timeSpent } = req.body;
     const quizId = req.params.id;
+
+    const originalAnswers = JSON.parse(JSON.stringify(answers));
 
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
@@ -338,29 +463,77 @@ async function checkAnswers(req: Request, res: Response) {
       return;
     }
 
-    const correctAnswers = quiz.questions.map((question: any) => question.correctAnswer);
-    const totalQuestions = correctAnswers.length;
+    const totalQuestions = quiz.questions.length;
+    const maxPossibleScore = quiz.maxPoints;
+    let userScore = 0;
+    let correctCount = 0;
 
-    const correctCount = answers.reduce((count: number, answer: string[], index: number) => {
-      return count + (arraysEqual(answer, correctAnswers[index]) ? 1 : 0);
-    }, 0);
+    const detailedResults = quiz.questions.map((question: any, index: number) => {
+      const questionNumber = index.toString();
+      
+      const originalUserAnswer = originalAnswers[questionNumber] || [];
+      
+      const normalizedUserAnswer = answers[questionNumber] || [];
+      const questionPoints = question.points;
+      
+      const normalizedCorrectAnswers = question.correctAnswer.map((answer: string) => 
+        answer.trim().toLowerCase()
+      ).sort();
+      
+      const sortedNormalizedUserAnswers = [...normalizedUserAnswer].sort();
+      
+      const isCorrect = arraysEqual(sortedNormalizedUserAnswers, normalizedCorrectAnswers);
+      
+      if (isCorrect) {
+        correctCount++;
+        userScore += questionPoints;
+      }
+      
+      return {
+        questionNumber: index,
+        questionId: question.id,
+        questionTitle: question.title,
+        questionType: question.type,
+        questionPoints,
+        userAnswer: originalUserAnswer,
+        normalizedUserAnswer,
+        correctAnswer: question.correctAnswer,
+        normalizedCorrectAnswer: normalizedCorrectAnswers,
+        isCorrect,
+        wasAnswered: originalUserAnswer.length > 0,
+        pointsEarned: isCorrect ? questionPoints : 0,
+        comparisonDetails: {
+          userNormalized: sortedNormalizedUserAnswers,
+          correctNormalized: normalizedCorrectAnswers,
+          caseSensitiveMatch: arraysEqual(originalUserAnswer.sort(), question.correctAnswer.sort()),
+        }
+      };
+    });
 
-    const scorePercent = Math.round((correctCount / totalQuestions) * 100);
-
-    const detailedResults = quiz.questions.map((question: any, index: number) => ({
-      questionId: question.id,
-      questionTitle: question.title,
-      userAnswer: answers[index] || [],
-      correctAnswer: question.correctAnswer,
-      isCorrect: arraysEqual(answers[index] || [], question.correctAnswer),
-    }));
+    const percentage = maxPossibleScore > 0 ? Math.round((userScore / maxPossibleScore) * 100) : 0;
+    
+    const answeredQuestions = detailedResults.filter(r => r.wasAnswered).length;
+    const skippedQuestions = totalQuestions - answeredQuestions;
 
     res.json({
-      scorePercent,
+      score: userScore,
+      maxScore: maxPossibleScore,
+      percentage,
       timeSpent,
       correctCount,
       totalQuestions,
+      answeredQuestions,
+      skippedQuestions,
       detailedResults,
+      summary: {
+        correct: correctCount,
+        incorrect: answeredQuestions - correctCount,
+        skipped: skippedQuestions,
+        total: totalQuestions,
+        pointsEarned: userScore,
+        maxPoints: maxPossibleScore,
+        percentage,
+      },
     });
   } catch (error) {
     console.error('Error checking answers:', error);
