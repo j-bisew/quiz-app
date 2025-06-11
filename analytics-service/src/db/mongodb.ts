@@ -6,6 +6,8 @@ const ActivityLogSchema = new mongoose.Schema({
   quizId: { type: String, required: true, index: true },
   metadata: {
     score: Number,
+    maxScore: Number,        // Add maxScore
+    percentage: Number,      // Add percentage
     timeSpent: Number,
     commentText: String,
     rank: Number,
@@ -20,8 +22,11 @@ const quizPopularitySchema = new mongoose.Schema({
   category: String,
   totalAttempts: { type: Number, default: 0 },
   averageScore: { type: Number, default: 0 },
+  averagePercentage: { type: Number, default: 0 }, // Add average percentage
   lastActivity: { type: Date, default: Date.now },
   popularityScore: { type: Number, default: 0, index: true },
+  scores: [Number], // Store all scores for average calculation
+  percentages: [Number], // Store all percentages for average calculation
 });
 
 ActivityLogSchema.index({ userId: 1, timestamp: -1 });
@@ -57,21 +62,48 @@ export class AnalyticsService {
   static async updateQuizPopularity(quizId: string, action: string, metadata: any) {
     try {
       if (action === 'quiz_completed') {
+        const updateData: any = {
+          $inc: { totalAttempts: 1 },
+          $set: { lastActivity: new Date() },
+        };
+
+        // Add score and percentage to arrays if provided
+        if (metadata.score !== undefined) {
+          updateData.$push = { scores: metadata.score };
+        }
+        if (metadata.percentage !== undefined) {
+          updateData.$push = { ...updateData.$push, percentages: metadata.percentage };
+        }
+
         await QuizPopularity.updateOne(
           { quizId },
-          {
-            $inc: { totalAttempts: 1 },
-            $set: { lastActivity: new Date() },
-            $push: { scores: metadata.score },
-          },
+          updateData,
           { upsert: true }
         );
 
+        // Recalculate averages
         const popularity = await QuizPopularity.findOne({ quizId });
         if (popularity && popularity.totalAttempts > 0) {
-          const popularityScore =
-            popularity.totalAttempts * 0.7 + (popularity.averageScore || 0) * 0.3;
-          await QuizPopularity.updateOne({ quizId }, { $set: { popularityScore } });
+          const avgScore = popularity.scores && popularity.scores.length > 0 
+            ? popularity.scores.reduce((a: number, b: number) => a + b, 0) / popularity.scores.length 
+            : 0;
+          
+          const avgPercentage = popularity.percentages && popularity.percentages.length > 0
+            ? popularity.percentages.reduce((a: number, b: number) => a + b, 0) / popularity.percentages.length
+            : 0;
+
+          const popularityScore = popularity.totalAttempts * 0.7 + avgPercentage * 0.3;
+          
+          await QuizPopularity.updateOne(
+            { quizId }, 
+            { 
+              $set: { 
+                averageScore: avgScore,
+                averagePercentage: avgPercentage,
+                popularityScore 
+              } 
+            }
+          );
         }
       }
     } catch (error) {
@@ -88,7 +120,10 @@ export class AnalyticsService {
             _id: '$action',
             count: { $sum: 1 },
             avgScore: { $avg: '$metadata.score' },
+            avgPercentage: { $avg: '$metadata.percentage' }, // Add percentage average
             totalTimeSpent: { $sum: '$metadata.timeSpent' },
+            maxScore: { $max: '$metadata.score' },
+            maxPercentage: { $max: '$metadata.percentage' }, // Add max percentage
           },
         },
       ]);

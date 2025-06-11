@@ -42,6 +42,7 @@ describe('Analytics Service Integration Tests', () => {
         description: 'Test quiz for analytics',
         category: 'Testing',
         difficulty: 'MEDIUM',
+        maxPoints: 10, // Add maxPoints to quiz
         createdById: testUser.id,
         questions: {
           create: [
@@ -50,12 +51,14 @@ describe('Analytics Service Integration Tests', () => {
               type: 'SINGLE',
               answers: ['3', '4', '5'],
               correctAnswer: ['4'],
+              points: 5, // Add points to question
             },
             {
               title: 'Select all even numbers',
               type: 'MULTIPLE',
               answers: ['1', '2', '3', '4'],
               correctAnswer: ['2', '4'],
+              points: 5, // Add points to question
             },
           ],
         },
@@ -81,11 +84,16 @@ describe('Analytics Service Integration Tests', () => {
   });
 
   describe('AnalyticsService Unit Tests', () => {
-    it('should log activity correctly', async () => {
+    it('should log activity correctly with new point system', async () => {
       const userId = testUser.id;
       const action = 'quiz_started';
       const quizId = testQuiz.id;
-      const metadata = { score: 85, timeSpent: 120 };
+      const metadata = { 
+        score: 8, 
+        maxScore: 10, 
+        percentage: 80, 
+        timeSpent: 120 
+      };
       const ipAddress = '127.0.0.1';
 
       await AnalyticsService.logActivity(userId, action, quizId, metadata, ipAddress);
@@ -101,15 +109,22 @@ describe('Analytics Service Integration Tests', () => {
       expect(loggedActivity!.action).toBe(action);
       expect(loggedActivity!.quizId).toBe(quizId);
       expect(loggedActivity!.metadata).toBeTruthy();
-      expect(loggedActivity!.metadata?.score).toBe(85);
+      expect(loggedActivity!.metadata?.score).toBe(8);
+      expect(loggedActivity!.metadata?.maxScore).toBe(10);
+      expect(loggedActivity!.metadata?.percentage).toBe(80);
       expect(loggedActivity!.metadata?.timeSpent).toBe(120);
       expect(loggedActivity!.ipAddress).toBe(ipAddress);
     });
 
-    it('should update quiz popularity on completion', async () => {
+    it('should update quiz popularity on completion with percentages', async () => {
       const quizId = testQuiz.id;
       const action = 'quiz_completed';
-      const metadata = { score: 85, timeSpent: 120 };
+      const metadata = { 
+        score: 8, 
+        maxScore: 10, 
+        percentage: 80, 
+        timeSpent: 120 
+      };
 
       await AnalyticsService.logActivity(testUser.id, action, quizId, metadata);
 
@@ -119,17 +134,29 @@ describe('Analytics Service Integration Tests', () => {
       expect(popularity).toBeTruthy();
       expect(popularity!.totalAttempts).toBe(1);
       expect(popularity!.lastActivity).toBeDefined();
+      expect(popularity!.scores).toBeDefined();
+      expect(popularity!.percentages).toBeDefined();
+      if (popularity!.scores && popularity!.scores.length > 0) {
+        expect(popularity!.scores[0]).toBe(8);
+      }
+      if (popularity!.percentages && popularity!.percentages.length > 0) {
+        expect(popularity!.percentages[0]).toBe(80);
+      }
     });
 
-    it('should get user stats correctly', async () => {
+    it('should get user stats correctly with percentages', async () => {
       const userId = testUser.id;
 
       await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
-        score: 90,
+        score: 9,
+        maxScore: 10,
+        percentage: 90,
         timeSpent: 100,
       });
       await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
-        score: 80,
+        score: 8,
+        maxScore: 10,
+        percentage: 80,
         timeSpent: 150,
       });
       await AnalyticsService.logActivity(userId, 'comment_added', testQuiz.id, {
@@ -145,17 +172,23 @@ describe('Analytics Service Integration Tests', () => {
       expect(quizCompletedStats).toBeTruthy();
       if (quizCompletedStats) {
         expect(quizCompletedStats.count).toBe(2);
-        expect(quizCompletedStats.avgScore).toBe(85);
+        expect(quizCompletedStats.avgScore).toBe(8.5); // (9 + 8) / 2
+        expect(quizCompletedStats.avgPercentage).toBe(85); // (90 + 80) / 2
+        expect(quizCompletedStats.maxPercentage).toBe(90);
       }
     });
 
-    it('should get popular quizzes correctly', async () => {
+    it('should get popular quizzes correctly with percentage analytics', async () => {
       await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
-        score: 95,
+        score: 9,
+        maxScore: 10,
+        percentage: 90,
         timeSpent: 90,
       });
       await AnalyticsService.logActivity(testAdmin.id, 'quiz_completed', testQuiz.id, {
-        score: 88,
+        score: 8,
+        maxScore: 10,
+        percentage: 80,
         timeSpent: 110,
       });
 
@@ -168,6 +201,11 @@ describe('Analytics Service Integration Tests', () => {
         expect(popularQuizzes[0]).toHaveProperty('quizId');
         expect(popularQuizzes[0]).toHaveProperty('totalAttempts');
         expect(popularQuizzes[0]).toHaveProperty('popularityScore');
+        expect(popularQuizzes[0]).toHaveProperty('averageScore');
+        expect(popularQuizzes[0]).toHaveProperty('averagePercentage');
+        expect(popularQuizzes[0].totalAttempts).toBe(2);
+        expect(popularQuizzes[0].averageScore).toBe(8.5); // (9 + 8) / 2
+        expect(popularQuizzes[0].averagePercentage).toBe(85); // (90 + 80) / 2
       }
     });
 
@@ -192,16 +230,20 @@ describe('Analytics Service Integration Tests', () => {
       expect(indexNames.includes('_id_')).toBe(true);
     });
 
-    it('should aggregate user statistics correctly', async () => {
+    it('should aggregate user statistics correctly with new fields', async () => {
       const userId = testUser.id;
 
       await AnalyticsService.logActivity(userId, 'quiz_started', testQuiz.id, {});
       await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
-        score: 95,
+        score: 9,
+        maxScore: 10,
+        percentage: 90,
         timeSpent: 120,
       });
       await AnalyticsService.logActivity(userId, 'quiz_completed', testQuiz.id, {
-        score: 85,
+        score: 8,
+        maxScore: 10,
+        percentage: 80,
         timeSpent: 140,
       });
 
@@ -214,19 +256,27 @@ describe('Analytics Service Integration Tests', () => {
         expect(completedStats).toMatchObject({
           _id: 'quiz_completed',
           count: 2,
-          avgScore: 90,
+          avgScore: 8.5, // (9 + 8) / 2
+          avgPercentage: 85, // (90 + 80) / 2
           totalTimeSpent: 260,
+          maxPercentage: 90,
         });
       }
     });
 
-    it('should handle concurrent analytics operations', async () => {
+    it('should handle concurrent analytics operations with new point system', async () => {
       const promises = [];
 
       for (let i = 0; i < 5; i++) {
+        const score = 6 + i;
+        const maxScore = 10;
+        const percentage = (score / maxScore) * 100;
+        
         promises.push(
           AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
-            score: 80 + i,
+            score,
+            maxScore,
+            percentage,
             timeSpent: 100 + i,
           })
         );
@@ -264,7 +314,11 @@ describe('Analytics Service Integration Tests', () => {
       const invalidQuizId = 'invalid-quiz-id';
 
       await expect(
-        AnalyticsService.logActivity(testUser.id, 'quiz_completed', invalidQuizId, { score: 90 })
+        AnalyticsService.logActivity(testUser.id, 'quiz_completed', invalidQuizId, { 
+          score: 9, 
+          maxScore: 10, 
+          percentage: 90 
+        })
       ).resolves.not.toThrow();
 
       const activity = await ActivityLog.findOne({
@@ -296,15 +350,21 @@ describe('Analytics Service Integration Tests', () => {
   });
 
   describe('Performance Tests', () => {
-    it('should handle batch of analytics data efficiently', async () => {
+    it('should handle batch of analytics data efficiently with new point system', async () => {
       const batchSize = 10;
       const startTime = Date.now();
 
       const promises = [];
       for (let i = 0; i < batchSize; i++) {
+        const score = Math.floor(Math.random() * 10) + 1;
+        const maxScore = 10;
+        const percentage = (score / maxScore) * 100;
+        
         promises.push(
           AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
-            score: Math.floor(Math.random() * 100),
+            score,
+            maxScore,
+            percentage,
             timeSpent: Math.floor(Math.random() * 300) + 60,
           })
         );
@@ -324,10 +384,12 @@ describe('Analytics Service Integration Tests', () => {
   });
 
   describe('Data Consistency Tests', () => {
-    it('should maintain consistency between PostgreSQL and MongoDB', async () => {
+    it('should maintain consistency between PostgreSQL and MongoDB with new fields', async () => {
       const leaderboardEntry = await prisma.leaderboardEntry.create({
         data: {
-          score: 92,
+          score: 9,
+          maxScore: 10,
+          percentage: 90,
           timeSpent: 180,
           userId: testUser.id,
           quizId: testQuiz.id,
@@ -335,7 +397,9 @@ describe('Analytics Service Integration Tests', () => {
       });
 
       await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
-        score: 92,
+        score: 9,
+        maxScore: 10,
+        percentage: 90,
         timeSpent: 180,
       });
 
@@ -346,12 +410,14 @@ describe('Analytics Service Integration Tests', () => {
       const mongoActivity = await ActivityLog.findOne({
         userId: testUser.id,
         action: 'quiz_completed',
-        'metadata.score': 92,
+        'metadata.score': 9,
       });
 
       expect(pgEntry).toBeTruthy();
       expect(mongoActivity).toBeTruthy();
       expect(pgEntry!.score).toBe(mongoActivity!.metadata?.score);
+      expect(pgEntry!.maxScore).toBe(mongoActivity!.metadata?.maxScore);
+      expect(pgEntry!.percentage).toBe(mongoActivity!.metadata?.percentage);
       expect(pgEntry!.timeSpent).toBe(mongoActivity!.metadata?.timeSpent);
     });
 
@@ -376,9 +442,11 @@ describe('Analytics Service Integration Tests', () => {
   });
 
   describe('Security Tests', () => {
-    it('should handle potentially malicious input', async () => {
+    it('should handle potentially malicious input with new fields', async () => {
       const maliciousMetadata = {
-        score: 95,
+        score: 9,
+        maxScore: 10,
+        percentage: 90,
         timeSpent: 120,
         commentText: '<script>alert("xss")</script>',
       };
@@ -399,14 +467,18 @@ describe('Analytics Service Integration Tests', () => {
 
       expect(activity).toBeTruthy();
       expect(activity!.metadata).toBeTruthy();
-      expect(activity!.metadata?.score).toBe(95);
+      expect(activity!.metadata?.score).toBe(9);
+      expect(activity!.metadata?.maxScore).toBe(10);
+      expect(activity!.metadata?.percentage).toBe(90);
       expect(activity!.metadata?.timeSpent).toBe(120);
       expect(activity!.metadata?.commentText).toBe('<script>alert("xss")</script>');
     });
 
-    it('should handle very large metadata objects', async () => {
+    it('should handle very large metadata objects with new point system', async () => {
       const largeMetadata = {
-        score: 85,
+        score: 8,
+        maxScore: 10,
+        percentage: 80,
         largeArray: new Array(100).fill('test'),
         largeString: 'a'.repeat(1000),
       };
@@ -422,7 +494,9 @@ describe('Analytics Service Integration Tests', () => {
 
       expect(activity).toBeTruthy();
       if (activity && activity.metadata) {
-        expect(activity.metadata.score).toBe(85);
+        expect(activity.metadata.score).toBe(8);
+        expect(activity.metadata.maxScore).toBe(10);
+        expect(activity.metadata.percentage).toBe(80);
       }
     });
   });

@@ -29,8 +29,15 @@ export const validateComment = [
 ];
 
 export const validateLeaderboardEntry = [
-  body('score').isInt({ min: 0, max: 100 }).withMessage('Score must be between 0 and 100'),
+  body('score').isInt({ min: 0 }).withMessage('Score must be a non-negative integer'),
+  body('maxScore').isInt({ min: 1 }).withMessage('Max score must be a positive integer'),
   body('timeSpent').isInt({ min: 1 }).withMessage('Time spent must be a positive integer'),
+  body('score').custom((value, { req }) => {
+    if (value > req.body.maxScore) {
+      throw new Error('Score cannot be greater than max score');
+    }
+    return true;
+  }),
   handleValidationErrors,
 ];
 
@@ -108,8 +115,18 @@ export const validateAnalyticsData = [
   
   body('metadata.score')
     .optional()
-    .isInt({ min: 0, max: 100 })
-    .withMessage('Score must be between 0 and 100'),
+    .isInt({ min: 0 })
+    .withMessage('Score must be a non-negative integer'),
+
+  body('metadata.maxScore')
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage('Max score must be a positive integer'),
+
+  body('metadata.percentage')
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('Percentage must be between 0 and 100'),
     
   body('metadata.timeSpent')
     .optional()
@@ -120,6 +137,15 @@ export const validateAnalyticsData = [
     .optional()
     .isLength({ min: 1, max: 1000 })
     .withMessage('Comment text must be between 1 and 1000 characters'),
+
+  body('metadata').custom((metadata) => {
+    if (metadata.score !== undefined && metadata.maxScore !== undefined) {
+      if (metadata.score > metadata.maxScore) {
+        throw new Error('Score cannot be greater than max score in metadata');
+      }
+    }
+    return true;
+  }),
     
   handleValidationErrors,
 ];

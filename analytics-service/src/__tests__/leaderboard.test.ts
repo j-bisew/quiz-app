@@ -40,6 +40,7 @@ describe('Leaderboard API', () => {
         description: 'Test quiz for leaderboard',
         category: 'Testing',
         difficulty: 'EASY',
+        maxPoints: 10, // Add maxPoints to quiz
         createdById: testUser.id,
         questions: {
           create: [
@@ -48,6 +49,7 @@ describe('Leaderboard API', () => {
               type: 'SINGLE',
               answers: ['Yes', 'No'],
               correctAnswer: ['Yes'],
+              points: 10, // Add points to question
             },
           ],
         },
@@ -80,42 +82,65 @@ describe('Leaderboard API', () => {
         },
       });
 
-      await prisma.leaderboardEntry.createMany({
-        data: [
-          {
-            score: 90,
-            timeSpent: 120,
-            userId: testUser.id,
-            quizId: testQuiz.id,
-          },
-          {
-            score: 95,
-            timeSpent: 100,
-            userId: user2.id,
-            quizId: testQuiz.id,
-          },
-          {
-            score: 85,
-            timeSpent: 150,
-            userId: testUser.id,
-            quizId: testQuiz.id,
-          },
-        ],
+      const user3 = await prisma.user.create({
+        data: {
+          name: 'User Three',
+          email: 'user3@example.com',
+          password: 'hashedpassword',
+          role: 'USER',
+        },
+      });
+
+      // Update entries to include maxScore and percentage
+      await prisma.leaderboardEntry.create({
+        data: {
+          score: 9,
+          maxScore: 10,
+          percentage: 90,
+          timeSpent: 120,
+          userId: testUser.id,
+          quizId: testQuiz.id,
+        },
+      });
+
+      await prisma.leaderboardEntry.create({
+        data: {
+          score: 10,
+          maxScore: 10,
+          percentage: 100,
+          timeSpent: 100,
+          userId: user2.id,
+          quizId: testQuiz.id,
+        },
+      });
+
+      await prisma.leaderboardEntry.create({
+        data: {
+          score: 8,
+          maxScore: 10,
+          percentage: 80,
+          timeSpent: 150,
+          userId: user3.id,
+          quizId: testQuiz.id,
+        },
       });
     });
 
-    it('should return leaderboard entries sorted by score and time', async () => {
+    it('should return leaderboard entries sorted by percentage and time', async () => {
       const response = await request(app).get(`/api/leaderboard/${testQuiz.id}`).expect(200);
 
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body).toHaveLength(3);
 
-      expect(response.body[0].score).toBe(95);
-      expect(response.body[1].score).toBe(90);
-      expect(response.body[2].score).toBe(85);
+      // Should be sorted by percentage desc, then time asc
+      expect(response.body[0].percentage).toBe(100);
+      expect(response.body[1].percentage).toBe(90);
+      expect(response.body[2].percentage).toBe(80);
 
       expect(response.body[0]).toHaveProperty('id');
       expect(response.body[0]).toHaveProperty('score');
+      expect(response.body[0]).toHaveProperty('maxScore');
+      expect(response.body[0]).toHaveProperty('percentage');
       expect(response.body[0]).toHaveProperty('timeSpent');
       expect(response.body[0]).toHaveProperty('userName');
       expect(response.body[0]).toHaveProperty('createdAt');
@@ -128,6 +153,7 @@ describe('Leaderboard API', () => {
           description: 'No entries',
           category: 'Testing',
           difficulty: 'EASY',
+          maxPoints: 5,
           createdById: testUser.id,
           questions: {
             create: [
@@ -136,6 +162,7 @@ describe('Leaderboard API', () => {
                 type: 'SINGLE',
                 answers: ['Yes'],
                 correctAnswer: ['Yes'],
+                points: 5,
               },
             ],
           },
@@ -152,7 +179,8 @@ describe('Leaderboard API', () => {
   describe('POST /api/leaderboard/:quizId', () => {
     it('should add leaderboard entry successfully', async () => {
       const entryData = {
-        score: 88,
+        score: 8,
+        maxScore: 10,
         timeSpent: 90,
       };
 
@@ -163,6 +191,8 @@ describe('Leaderboard API', () => {
         .expect(201);
 
       expect(response.body.score).toBe(entryData.score);
+      expect(response.body.maxScore).toBe(entryData.maxScore);
+      expect(response.body.percentage).toBe(80); // 8/10 * 100 = 80
       expect(response.body.timeSpent).toBe(entryData.timeSpent);
       expect(response.body.userId).toBe(testUser.id);
       expect(response.body.quizId).toBe(testQuiz.id);
@@ -175,12 +205,13 @@ describe('Leaderboard API', () => {
         },
       });
       expect(savedEntry).toBeTruthy();
+      expect(savedEntry!.percentage).toBe(80);
     });
 
     it('should return 401 without authentication', async () => {
       const response = await request(app)
         .post(`/api/leaderboard/${testQuiz.id}`)
-        .send({ score: 80, timeSpent: 100 })
+        .send({ score: 8, maxScore: 10, timeSpent: 100 })
         .expect(401);
 
       expect(response.body.error).toBe('No token provided');
@@ -195,34 +226,81 @@ describe('Leaderboard API', () => {
       const response = await request(app)
         .post(`/api/leaderboard/${testQuiz.id}`)
         .set('Authorization', 'Bearer invalid-token')
-        .send({ score: 80, timeSpent: 100 })
+        .send({ score: 8, maxScore: 10, timeSpent: 100 })
         .expect(401);
 
       expect(response.body.error).toBe('Invalid token');
+    });
+
+    it('should validate that score is not greater than maxScore', async () => {
+      const response = await request(app)
+        .post(`/api/leaderboard/${testQuiz.id}`)
+        .set('Authorization', 'Bearer valid-token')
+        .send({ score: 15, maxScore: 10, timeSpent: 100 })
+        .expect(400);
+
+      expect(response.body.error).toBe('Validation Error');
+    });
+
+    it('should require maxScore field', async () => {
+      const response = await request(app)
+        .post(`/api/leaderboard/${testQuiz.id}`)
+        .set('Authorization', 'Bearer valid-token')
+        .send({ score: 8, timeSpent: 100 }) // Missing maxScore
+        .expect(400);
+
+      expect(response.body.error).toBe('Validation Error');
     });
   });
 
   describe('GET /api/leaderboard/user/:userId/stats', () => {
     beforeEach(async () => {
-      await prisma.leaderboardEntry.createMany({
-        data: [
-          {
-            score: 90,
-            timeSpent: 120,
-            userId: testUser.id,
-            quizId: testQuiz.id,
+      const quiz2 = await prisma.quiz.create({
+        data: {
+          title: 'Second Test Quiz',
+          description: 'Second quiz for stats',
+          category: 'Testing',
+          difficulty: 'MEDIUM',
+          maxPoints: 20,
+          createdById: testUser.id,
+          questions: {
+            create: [
+              {
+                title: 'Second question?',
+                type: 'SINGLE',
+                answers: ['Yes', 'No'],
+                correctAnswer: ['Yes'],
+                points: 20,
+              },
+            ],
           },
-          {
-            score: 85,
-            timeSpent: 100,
-            userId: testUser.id,
-            quizId: testQuiz.id,
-          },
-        ],
+        },
+      });
+
+      await prisma.leaderboardEntry.create({
+        data: {
+          score: 9,
+          maxScore: 10,
+          percentage: 90,
+          timeSpent: 120,
+          userId: testUser.id,
+          quizId: testQuiz.id,
+        },
+      });
+
+      await prisma.leaderboardEntry.create({
+        data: {
+          score: 16,
+          maxScore: 20,
+          percentage: 80,
+          timeSpent: 100,
+          userId: testUser.id,
+          quizId: quiz2.id,
+        },
       });
     });
 
-    it('should return user statistics', async () => {
+    it('should return user statistics with percentages', async () => {
       const response = await request(app)
         .get(`/api/leaderboard/user/${testUser.id}/stats`)
         .expect(200);
@@ -233,8 +311,14 @@ describe('Leaderboard API', () => {
 
       expect(response.body.summary).toHaveProperty('totalQuizzes');
       expect(response.body.summary).toHaveProperty('averageScore');
+      expect(response.body.summary).toHaveProperty('averagePercentage');
+      expect(response.body.summary).toHaveProperty('maxPercentage');
       expect(response.body.summary).toHaveProperty('totalTimeSpent');
       expect(response.body.summary).toHaveProperty('activities');
+
+      expect(response.body.summary.totalQuizzes).toBe(2);
+      expect(response.body.summary.averagePercentage).toBe(85); // (90 + 80) / 2
+      expect(response.body.summary.maxPercentage).toBe(90);
     });
 
     it('should handle user with no statistics', async () => {
@@ -253,6 +337,8 @@ describe('Leaderboard API', () => {
 
       expect(response.body.summary.totalQuizzes).toBe(0);
       expect(response.body.summary.averageScore).toBe(0);
+      expect(response.body.summary.averagePercentage).toBe(0);
+      expect(response.body.summary.maxPercentage).toBe(0);
       expect(response.body.summary.totalTimeSpent).toBe(0);
     });
   });
@@ -265,6 +351,7 @@ describe('Leaderboard API', () => {
           description: 'Very popular quiz',
           category: 'Popular',
           difficulty: 'MEDIUM',
+          maxPoints: 15,
           createdById: testUser.id,
           questions: {
             create: [
@@ -273,22 +360,30 @@ describe('Leaderboard API', () => {
                 type: 'SINGLE',
                 answers: ['Yes', 'No'],
                 correctAnswer: ['Yes'],
+                points: 15,
               },
             ],
           },
         },
       });
 
+      // Add analytics with new fields
       await AnalyticsService.logActivity(testUser.id, 'quiz_completed', testQuiz.id, {
-        score: 90,
+        score: 9,
+        maxScore: 10,
+        percentage: 90,
         timeSpent: 100,
       });
       await AnalyticsService.logActivity(testUser.id, 'quiz_completed', quiz2.id, {
-        score: 95,
+        score: 14,
+        maxScore: 15,
+        percentage: 93,
         timeSpent: 80,
       });
       await AnalyticsService.logActivity(testUser.id, 'quiz_completed', quiz2.id, {
-        score: 88,
+        score: 13,
+        maxScore: 15,
+        percentage: 87,
         timeSpent: 90,
       });
     });
@@ -303,9 +398,11 @@ describe('Leaderboard API', () => {
       if (response.body.length > 0) {
         expect(response.body[0]).toHaveProperty('id');
         expect(response.body[0]).toHaveProperty('title');
+        expect(response.body[0]).toHaveProperty('maxPoints'); // Should include maxPoints
         expect(response.body[0]).toHaveProperty('analytics');
         expect(response.body[0].analytics).toHaveProperty('totalAttempts');
         expect(response.body[0].analytics).toHaveProperty('averageScore');
+        expect(response.body[0].analytics).toHaveProperty('averagePercentage'); // Should include percentage
       }
     });
 

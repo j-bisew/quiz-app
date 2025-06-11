@@ -23,7 +23,7 @@ async function getQuizLeaderboard(req: Request, res: Response) {
     const quizId = req.params.quizId;
     const leaderboard = await prisma.leaderboardEntry.findMany({
       where: { quizId },
-      orderBy: [{ score: 'desc' }, { timeSpent: 'asc' }],
+      orderBy: [{ percentage: 'desc' }, { timeSpent: 'asc' }],
       take: 10,
       include: {
         user: {
@@ -39,6 +39,8 @@ async function getQuizLeaderboard(req: Request, res: Response) {
         userId: entry.userId,
         userName: entry.user.name,
         score: entry.score,
+        maxScore: entry.maxScore,
+        percentage: entry.percentage,
         timeSpent: entry.timeSpent,
         createdAt: entry.createdAt,
       }))
@@ -53,11 +55,15 @@ async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
   try {
     const quizId = req.params.quizId;
     const userId = req.user!.id;
-    const { score, timeSpent } = req.body;
+    const { score, maxScore, timeSpent } = req.body;
+
+    const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
 
     const entry = await prisma.leaderboardEntry.create({
       data: {
         score,
+        maxScore,
+        percentage,
         timeSpent,
         user: { connect: { id: userId } },
         quiz: { connect: { id: quizId } },
@@ -68,7 +74,7 @@ async function addLeaderboardEntry(req: AuthenticatedRequest, res: Response) {
       userId,
       'quiz_completed',
       quizId,
-      { score, timeSpent },
+      { score, maxScore, percentage, timeSpent },
       req.ip
     );
 
@@ -84,21 +90,29 @@ async function getUserStats(req: Request, res: Response) {
     const userId = req.params.userId;
 
     const stats = await prisma.leaderboardEntry.groupBy({
-      by: ['userId', 'quizId'],
+      by: ['userId'],
       where: { userId },
       _count: { id: true },
-      _avg: { score: true },
+      _avg: { score: true, percentage: true },
       _sum: { timeSpent: true },
+      _max: { score: true, percentage: true },
     });
 
     const mongoStats = await AnalyticsService.getUserStats(userId);
 
     res.json({
-      postgresql: stats[0] || { _count: { id: 0 }, _avg: { score: 0 }, _sum: { timeSpent: 0 } },
+      postgresql: stats[0] || { 
+        _count: { id: 0 }, 
+        _avg: { score: 0, percentage: 0 }, 
+        _sum: { timeSpent: 0 },
+        _max: { score: 0, percentage: 0 }
+      },
       mongodb: mongoStats,
       summary: {
         totalQuizzes: stats[0]?._count.id || 0,
         averageScore: stats[0]?._avg.score || 0,
+        averagePercentage: stats[0]?._avg.percentage || 0,
+        maxPercentage: stats[0]?._max.percentage || 0,
         totalTimeSpent: stats[0]?._sum.timeSpent || 0,
         activities: mongoStats.length,
       },
@@ -124,6 +138,7 @@ async function getPopularQuizzes(req: Request, res: Response) {
               description: true,
               category: true,
               difficulty: true,
+              maxPoints: true,
               createdBy: {
                 select: { name: true },
               },
@@ -135,6 +150,7 @@ async function getPopularQuizzes(req: Request, res: Response) {
             analytics: {
               totalAttempts: popularity.totalAttempts,
               averageScore: popularity.averageScore,
+              averagePercentage: popularity.averagePercentage || 0,
               popularityScore: popularity.popularityScore,
               lastActivity: popularity.lastActivity,
             },
