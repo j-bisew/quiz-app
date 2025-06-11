@@ -95,8 +95,13 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
         throw new Error('User not found');
       }
 
-      const maxPoints = questions.reduce((sum: number, question: any) => {
-        return sum + (question.points);
+      const questionsWithPoints = questions.map((question: any) => ({
+        ...question,
+        points: question.points || 1
+      }));
+
+      const maxPoints = questionsWithPoints.reduce((sum: number, question: any) => {
+        return sum + question.points;
       }, 0);
 
       const newQuiz = await tx.quiz.create({
@@ -109,7 +114,7 @@ async function createQuiz(req: AuthenticatedRequest, res: Response) {
           maxPoints,
           createdById,
           questions: {
-            create: questions.map((q: any) => ({
+            create: questionsWithPoints.map((q: any) => ({
               title: q.title,
               type: q.type,
               answers: q.answers,
@@ -218,7 +223,12 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
         throw new Error('Unauthorized');
       }
 
-      const maxPoints = questions.reduce((sum: number, question: any) => {
+      const questionsWithPoints = questions.map((question: any) => ({
+        ...question,
+        points: question.points || 1
+      }));
+
+      const maxPoints = questionsWithPoints.reduce((sum: number, question: any) => {
         return sum + question.points;
       }, 0);
 
@@ -234,7 +244,7 @@ async function updateQuiz(req: AuthenticatedRequest, res: Response) {
           timeLimit,
           maxPoints,
           questions: {
-            create: questions.map((q: any) => ({
+            create: questionsWithPoints.map((q: any) => ({
               title: q.title,
               type: q.type,
               answers: q.answers,
@@ -445,8 +455,6 @@ async function checkAnswers(req: Request, res: Response) {
     const { answers, timeSpent } = req.body;
     const quizId = req.params.id;
 
-    const originalAnswers = JSON.parse(JSON.stringify(answers));
-
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
       include: {
@@ -471,18 +479,20 @@ async function checkAnswers(req: Request, res: Response) {
     const detailedResults = quiz.questions.map((question: any, index: number) => {
       const questionNumber = index.toString();
       
-      const originalUserAnswer = originalAnswers[questionNumber] || [];
+      const originalUserAnswer = answers[questionNumber] || [];
       
-      const normalizedUserAnswer = answers[questionNumber] || [];
+      const normalizedUserAnswer = originalUserAnswer
+        .map((answer: string) => answer.trim().toLowerCase())
+        .sort();
+      
       const questionPoints = question.points;
       
-      const normalizedCorrectAnswers = question.correctAnswer.map((answer: string) => 
-        answer.trim().toLowerCase()
-      ).sort();
+      const normalizedCorrectAnswers = question.correctAnswer
+        .map((answer: string) => answer.trim().toLowerCase())
+        .sort();
       
-      const sortedNormalizedUserAnswers = [...normalizedUserAnswer].sort();
-      
-      const isCorrect = arraysEqual(sortedNormalizedUserAnswers, normalizedCorrectAnswers);
+      // Compare normalized arrays
+      const isCorrect = arraysEqual(normalizedUserAnswer, normalizedCorrectAnswers);
       
       if (isCorrect) {
         correctCount++;
@@ -503,9 +513,12 @@ async function checkAnswers(req: Request, res: Response) {
         wasAnswered: originalUserAnswer.length > 0,
         pointsEarned: isCorrect ? questionPoints : 0,
         comparisonDetails: {
-          userNormalized: sortedNormalizedUserAnswers,
+          userNormalized: normalizedUserAnswer,
           correctNormalized: normalizedCorrectAnswers,
-          caseSensitiveMatch: arraysEqual(originalUserAnswer.sort(), question.correctAnswer.sort()),
+          caseSensitiveMatch: arraysEqual(
+            originalUserAnswer.slice().sort(), 
+            question.correctAnswer.slice().sort()
+          ),
         }
       };
     });
@@ -541,16 +554,13 @@ async function checkAnswers(req: Request, res: Response) {
   }
 }
 
-function arraysEqual(a: string[], b: string[]) {
+function arraysEqual(a: string[], b: string[]): boolean {
   if (a === b) return true;
-  if (a == null || b == null) return false;
+  if (!a || !b) return false;
   if (a.length !== b.length) return false;
 
-  const sortedA = [...a].sort();
-  const sortedB = [...b].sort();
-
-  for (let i = 0; i < sortedA.length; ++i) {
-    if (sortedA[i] !== sortedB[i]) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
   }
   return true;
 }

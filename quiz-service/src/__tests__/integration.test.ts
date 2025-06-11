@@ -59,6 +59,7 @@ describe('Quiz Integration Tests', () => {
           type: 'SINGLE',
           answers: ['Testing components together', 'Testing in isolation', 'Manual testing'],
           correctAnswer: ['Testing components together'],
+          points: 5,
         },
       ],
     };
@@ -85,12 +86,16 @@ describe('Quiz Integration Tests', () => {
     const answersResponse = await request(app)
       .post(`/api/quizzes/${quizId}/check-answers`)
       .send({
-        answers: [['Testing components together']],
+        answers: {
+          "0": ["Testing components together"]
+        },
         timeSpent: 45,
       })
       .expect(200);
 
-    expect(answersResponse.body.scorePercent).toBe(100);
+    expect(answersResponse.body.percentage).toBe(100);
+    expect(answersResponse.body.score).toBe(5);
+    expect(answersResponse.body.correctCount).toBe(1);
 
     await request(app)
       .delete(`/api/quizzes/${quizId}`)

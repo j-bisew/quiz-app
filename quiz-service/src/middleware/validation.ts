@@ -80,7 +80,8 @@ export const validateQuestionFields = [
   body('questions.*.points')
     .optional()
     .isInt({ min: 1, max: 100 })
-    .withMessage('Question points must be between 1 and 100'),
+    .withMessage('Question points must be between 1 and 100')
+    .default(1),
   
   // Walidacja answers (zawsze tablica)
   body('questions.*.answers')
@@ -102,6 +103,11 @@ export const validateQuestionTypes = [
     .custom((question, { path }) => {
       const { type, answers, correctAnswer } = question;
       const questionIndex = path.replace('questions[', '').replace(']', '');
+
+      // Set default points if not provided
+      if (!question.points) {
+        question.points = 1;
+      }
 
       // 🎯 SINGLE - jedna poprawna odpowiedź z listy
       if (type === 'SINGLE') {
@@ -215,73 +221,51 @@ export const validateQuestionTypes = [
 
 export const validateCheckAnswers = [
   body('answers')
-    .custom((value, { req }) => {
+    .custom((value) => {
       if (typeof value !== 'object' || value === null || Array.isArray(value)) {
         throw new Error('Answers must be an object with question numbers as keys (e.g., {"0": ["answer"], "1": ["answer1", "answer2"]})');
       }
       
-      // 🆕 NORMALIZACJA - przekształć odpowiedzi na lowercase i trim
-      const normalizedAnswers: { [key: string]: string[] } = {};
-      
-      // Sprawdź czy klucze to liczby (numery pytań)
-      const keys = Object.keys(value);
-      for (const key of keys) {
+      for (const key of Object.keys(value)) {
         if (!/^\d+$/.test(key)) {
           throw new Error('Answer keys must be question numbers (e.g., "0", "1", "2")');
         }
         
-        // Sprawdź czy wartość to tablica stringów
         if (!Array.isArray(value[key])) {
           throw new Error(`Answer for question ${key} must be an array of strings`);
         }
         
-        // 🆕 Normalizuj odpowiedzi dla danego pytania
-        const normalizedQuestionAnswers: string[] = [];
-        
-        // Sprawdź każdą odpowiedź w tablicy
-        for (let i = 0; i < value[key].length; i++) {
-          const answer = value[key][i];
+        for (const answer of value[key]) {
           if (typeof answer !== 'string') {
             throw new Error(`All answers for question ${key} must be strings`);
           }
           
-          // 🆕 Normalizuj: trim + lowercase
-          const normalizedAnswer = answer.trim().toLowerCase();
-          
-          // Sprawdź czy po normalizacji nie jest puste
-          if (normalizedAnswer === '') {
+          if (answer.trim() === '') {
             throw new Error(`Answer for question ${key} cannot be empty after trimming spaces`);
           }
           
-          // Nie może być za długa (max 1000 znaków na odpowiedź)
-          if (normalizedAnswer.length > 1000) {
+          if (answer.length > 1000) {
             throw new Error(`Answer for question ${key} cannot exceed 1000 characters`);
           }
-          
-          // 🆕 Sprawdź duplikaty po normalizacji
-          if (normalizedQuestionAnswers.includes(normalizedAnswer)) {
-            throw new Error(`Question ${key} contains duplicate answers after normalization: "${normalizedAnswer}"`);
-          }
-          
-          normalizedQuestionAnswers.push(normalizedAnswer);
         }
         
-        // Maksymalnie 20 odpowiedzi na pytanie (zabezpieczenie przed spamem)
-        if (normalizedQuestionAnswers.length > 20) {
+        if (value[key].length > 20) {
           throw new Error(`Question ${key} cannot have more than 20 answers`);
         }
         
-        normalizedAnswers[key] = normalizedQuestionAnswers;
+        // Check for duplicates after normalization (but don't modify data)
+        const normalizedAnswers = value[key].map((answer: string) => answer.trim().toLowerCase());
+        const uniqueNormalized = [...new Set(normalizedAnswers)];
+        if (uniqueNormalized.length !== normalizedAnswers.length) {
+          throw new Error(`Question ${key} contains duplicate answers after normalization`);
+        }
       }
-      
-      // 🆕 ZASTĄP oryginalne odpowiedzi znormalizowanymi
-      req.body.answers = normalizedAnswers;
       
       return true;
     }),
   
   body('timeSpent')
-    .isInt({ min: 1, max: 7200 }) // max 2 godziny
+    .isInt({ min: 1, max: 7200 })
     .withMessage('Time spent must be between 1 second and 2 hours'),
   
   handleValidationErrors,
@@ -299,45 +283,12 @@ export function normalizeAnswersForComparison(answers: string[]): string[] {
 }
 
 // =============================================
-// 🆕 VALIDATION FOR CREATING QUESTIONS (normalizacja correctAnswer)
-// =============================================
-
-export const normalizeQuestionAnswers = [
-  body('questions.*.correctAnswer')
-    .customSanitizer((correctAnswers) => {
-      if (!Array.isArray(correctAnswers)) return correctAnswers;
-      
-      // 🆕 Normalizuj poprawne odpowiedzi
-      return correctAnswers.map((answer: string) => {
-        if (typeof answer === 'string') {
-          return answer.trim().toLowerCase();
-        }
-        return answer;
-      });
-    }),
-  
-  body('questions.*.answers')
-    .customSanitizer((answers) => {
-      if (!Array.isArray(answers)) return answers;
-      
-      // 🆕 Normalizuj opcje odpowiedzi (dla SINGLE i MULTIPLE)
-      return answers.map((answer: string) => {
-        if (typeof answer === 'string') {
-          return answer.trim(); // Tylko trim, bez lowercase (opcje wyświetlane użytkownikowi)
-        }
-        return answer;
-      });
-    }),
-];
-
-// =============================================
 // 🔗 COMBINED VALIDATORS
 // =============================================
 
 export const validateCreateQuiz = [
   ...validateQuizFields,
   ...validateQuestionFields,
-  ...normalizeQuestionAnswers, // 🆕 Normalizuj przed walidacją typów
   ...validateQuestionTypes,
   handleValidationErrors,
 ];
@@ -346,7 +297,6 @@ export const validateUpdateQuiz = [
   param('id').isLength({ min: 1 }).withMessage('Quiz ID is required'),
   ...validateQuizFields,
   ...validateQuestionFields,
-  ...normalizeQuestionAnswers, // 🆕 Normalizuj przed walidacją typów
   ...validateQuestionTypes,
   handleValidationErrors,
 ];
